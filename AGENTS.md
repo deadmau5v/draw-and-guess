@@ -190,3 +190,7 @@ $env:PATH = "$(Split-Path $NODE);$env:PATH"
 ---
 
 *本文档由 Team Lead Agent 编写，基于规范 [SPEC.md](SPEC.md) 与实测运行成果生成，作为后续迭代的最高业务与工程上下文。*
+
+## UI 按钮规范
+- 全站按钮只能使用 [web/src/ui.tsx](web/src/ui.tsx) 的 GameButton（tone: blue/green/yellow/red/grey/ghost），禁止直接使用 Mantine Button 或自写按钮样式。
+- 按钮皮肤来自 Kenney UI Pack 2.0（CC0，素材位于 web/public/kenney/，授权见同目录 License.txt）。

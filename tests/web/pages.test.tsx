@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
@@ -66,7 +66,7 @@ it('单人随机一碗发送自动开局意图', async () => {
 });
 it('题库默认排除重口并支持切换高评与搜索', async () => {
   render(<Library onChoose={() => {}} busy={false} />);
-  await waitFor(() => expect(fake.puzzles).toHaveBeenCalledWith(expect.objectContaining({ excludeNsfl: true, sort: 'good' }), expect.any(AbortSignal)));
+  await waitFor(() => expect(fake.puzzles).toHaveBeenCalledWith(expect.objectContaining({ excludeNsfl: true, sort: 'new' }), expect.any(AbortSignal)));
   fireEvent.click(screen.getByRole('tab', { name: '最热' }));
   fireEvent.change(screen.getByLabelText('搜索题目'), { target: { value: '酒保' } });
   await waitFor(() => expect(fake.puzzles).toHaveBeenCalledWith(expect.objectContaining({ sort: 'hot', q: '酒保' }), expect.any(AbortSignal)));
@@ -79,3 +79,4 @@ it('房间显示汤面、玩家、8问额度与房主面板', () => {
   expect(screen.getByText('剩余 8 问')).toBeTruthy();
   expect(screen.getByText('房主控制')).toBeTruthy();
 });
+

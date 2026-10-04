@@ -17,6 +17,7 @@
     "dependencies": {
         "@mantine/core": "^7.17.8",
         "@mantine/hooks": "^7.17.8",
+        "@rive-app/react-canvas": "^4.36.0",
         "canvas-confetti": "^1.9.4",
         "dotenv": "^18.0.5",
         "express": "^5.2.1",

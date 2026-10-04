@@ -1,35 +1,34 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Badge, Button, Checkbox, Paper, TextInput } from '@mantine/core';
+import { Badge, Checkbox, Paper, TextInput } from '@mantine/core';
 import {
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  Bot,
-  Compass,
-  Copy,
-  Dice5,
-  DoorOpen,
-  Eye,
-  Flame,
-  Hash,
-  HelpCircle,
-  Lightbulb,
-  LogIn,
-  LogOut,
-  Play,
-  Plus,
-  Radio,
-  Search,
-  Share2,
-  ShieldAlert,
-  Sparkles,
-  ThumbsUp,
-  User,
-  Users,
-  Zap,
-} from 'lucide-react';
+  ArrowLeftIcon,
+  BookIcon,
+  BotIcon,
+  CompassIcon,
+  CopyIcon,
+  DiceIcon,
+  DoorIcon,
+  EyeIcon,
+  FlameIcon,
+  HashIcon,
+  HelpCircleIcon,
+  LightbulbIcon,
+  LogOutIcon,
+  PlayIcon,
+  PlusIcon,
+  RadioIcon,
+  SearchIcon,
+  SparkleIcon,
+  ThumbsUpIcon,
+  TurtleIcon,
+  UserIcon,
+  UsersIcon,
+  ZapIcon,
+} from './icons/GameIcons';
+import { MascotDetective } from './rive/RiveIcon';
 import type { HealthResponse, PuzzleSummary, SortKey, Verdict } from '@shared/protocol';
 import { api } from './api';
+import { GameButton } from './ui';
 import { actions, joinRoom, leaveRoom } from './socket';
 import { clearToast, getSnapshot, notify, useGame } from './store';
 import { remainingQuota } from './game';
@@ -98,120 +97,166 @@ export function Home({
 
   return (
     <main className="home">
-      <section className="hero">
-        <div className="hero-content">
-          <div className="hero-badges">
-            <Badge variant="light" color="teal" size="md" leftSection={<Bot size={13} />}>
-              JEV 智能裁判驱动
-            </Badge>
-            <Badge variant="subtle" color="gray" size="md" leftSection={<Users size={13} />}>
-              1–8 人实时联机
-            </Badge>
-            <Badge variant="subtle" color="gray" size="md" leftSection={<Zap size={13} />}>
-              免注册即开即玩
-            </Badge>
-          </div>
-          <h1>海龟汤 · 多人情境推理馆</h1>
-          <p className="hero-description">
-            一碗离奇的谜面，一桌默契的侦探。向 AI 主持人发起是非提问，在限定次数内剥离干扰，拼凑隐藏的真相。
-          </p>
-          <div className="how-to-box">
-            <span className="how-to-label">核心玩法</span>
-            <span className="how-to">汤面 → 提问 → 是/不是/不相关 → 每人8问 → 还原真相</span>
-          </div>
-        </div>
-      </section>
-
-      <section className="home-actions">
-        <Paper className="home-card" withBorder p="xl" radius="md">
-          <div className="section-head">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="card-icon-wrap">
-                <Plus size={20} color="var(--accent)" />
-              </div>
-              <div>
-                <h2>今晚，你叫什么？</h2>
-                <span className="eyebrow">入座开席</span>
-              </div>
-            </div>
-          </div>
-          <TextInput
-            id="nickname"
-            label="你的昵称"
-            maxLength={16}
-            value={name}
-            leftSection={<User size={16} />}
-            placeholder="取个侦探代号，最多 16 字"
-            onChange={e => onName(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && name.trim()) onCreate();
+      <div className="gartic-main-card">
+        {/* Top 3D Comic Ribbon */}
+        <div className="gartic-ribbon-wrap">
+          <GameButton tone="blue" size="lg" disabled={busy}
+            onClick={() => {
+              if (name.trim()) onCreate();
+              else {
+                notify('先取个侦探代号吧');
+                document.getElementById('nickname')?.focus();
+              }
             }}
-          />
-          <div className="start-buttons">
-            <Button
-              className="primary"
-              disabled={busy || !name.trim()}
-              leftSection={<Play size={16} />}
-              onClick={() => onCreate()}
-            >
-              创建房间 →
-            </Button>
-            <Button
-              variant="light"
-              disabled={busy || !name.trim()}
-              leftSection={<Dice5 size={16} />}
-              onClick={() => onCreate('random')}
-            >
-              单人随机一碗
-            </Button>
-          </div>
-          <p className="muted">昵称保存在本机。把房间码分享给朋友，就能一起开席。</p>
-        </Paper>
+          >
+            开始游戏
+          </GameButton>
+        </div>
 
-        <Paper className="home-card" withBorder p="xl" radius="md">
-          <div className="section-head">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="card-icon-wrap">
-                <LogIn size={20} color="var(--accent)" />
-              </div>
-              <div>
-                <h2>朋友已经开席？</h2>
-                <span className="eyebrow">同桌推理</span>
+        <div className="gartic-home-grid">
+          {/* Left Column: Avatar + Nickname + 3D Action Buttons */}
+          <div className="gartic-side-col">
+            <div className="gartic-avatar-box">
+              <MascotDetective size={60} mood="idle" />
+              <div className="gartic-avatar-badge" title="侦探代号">
+                <SparkleIcon size={14} animate />
               </div>
             </div>
+
+            <div style={{ width: '100%', maxWidth: 280 }}>
+              <TextInput
+                id="nickname"
+                label="你的昵称"
+                maxLength={16}
+                value={name}
+                leftSection={<UserIcon size={18} animate />}
+                placeholder="取个侦探代号 (最多16字)"
+                size="md"
+                styles={{
+                  input: { fontWeight: 700, border: '2px solid #cbd5e1', textAlign: 'center' },
+                  label: { fontWeight: 800, marginBottom: 6, color: '#334155' },
+                }}
+                onChange={e => onName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && name.trim()) onCreate();
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, width: '100%', maxWidth: 300, justifyContent: 'center' }}>
+              <GameButton
+                tone="blue" size="md"
+                disabled={busy || !name.trim()}
+                leftSection={<PlusIcon size={18} animate />}
+                onClick={() => onCreate()}
+                style={{ flex: 1 }}
+              >
+                创建房间 →
+              </GameButton>
+              <GameButton
+                tone="yellow" size="md"
+                disabled={busy || !name.trim()}
+                leftSection={<DiceIcon size={18} animate />}
+                onClick={() => onCreate('random')}
+                style={{ flex: 1 }}
+              >
+                单人随机一碗
+              </GameButton>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+              把房间码发给朋友，同屏即时对局
+            </p>
           </div>
-          <div className="inline-input">
-            <TextInput
-              id="room-code"
-              label="房间码"
-              className="code-input"
-              maxLength={6}
-              value={code}
-              leftSection={<Hash size={16} />}
-              onChange={e => setCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
-              placeholder="输入 6 位房间码 (如 ABC234)"
-              onKeyDown={e => {
-                if (e.key === 'Enter' && code.trim()) join();
-              }}
-            />
-            <Button
+
+          {/* Center Divider: "或" */}
+          <div className="gartic-or-divider">
+            <div className="gartic-or-line" />
+            <div className="gartic-or-badge">或</div>
+          </div>
+
+          {/* Right Column: Quick Feature Pills + Join Room */}
+          <div className="gartic-side-col">
+            <div className="gartic-features-row">
+              <div className="gartic-feature-pill">
+                <div className="gartic-feature-icon">
+                  <BookIcon size={26} animate />
+                </div>
+                <span>{health ? health.puzzles.toLocaleString() : '—'} 道题库</span>
+              </div>
+              <div className="gartic-feature-pill">
+                <div className="gartic-feature-icon">
+                  <BotIcon size={26} animate />
+                </div>
+                <span>JEV 裁判</span>
+              </div>
+              <div className="gartic-feature-pill">
+                <div className="gartic-feature-icon">
+                  <UsersIcon size={26} animate />
+                </div>
+                <span>多人实时联机</span>
+              </div>
+            </div>
+
+            <div style={{ width: '100%', maxWidth: 280 }}>
+              <TextInput
+                id="room-code"
+                label="房间码"
+                className="code-input"
+                maxLength={6}
+                value={code}
+                leftSection={<HashIcon size={18} />}
+                onChange={e => setCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
+                placeholder="例如: ABC234"
+                size="md"
+                styles={{
+                  input: {
+                    fontWeight: 800,
+                    border: '2px solid #cbd5e1',
+                    textAlign: 'center',
+                    letterSpacing: 2,
+                    fontFamily: 'monospace',
+                  },
+                  label: { fontWeight: 800, marginBottom: 6, color: '#334155' },
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && code.trim()) join();
+                }}
+              />
+            </div>
+
+            <GameButton
+              tone="green" size="md"
               disabled={busy || !code.trim()}
-              leftSection={<DoorOpen size={16} />}
+              leftSection={<DoorIcon size={18} animate />}
               onClick={join}
+              style={{ width: '100%', maxWidth: 280 }}
             >
               加入房间 ↗
-            </Button>
-          </div>
-          <a href="#/library" className="library-link">
-            <BookOpen size={15} /> 翻翻汤单—挑一碗合你口味的故事 ↗
-          </a>
-        </Paper>
-      </section>
+            </GameButton>
 
-      <div className="home-footer">
-        <span>{health?.puzzles ?? 1105} 个故事，等你揭开</span>
-        <span>仅供学习与私用 · 尊重原作者</span>
+            <a
+              href="#/library"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color: '#0284c7',
+                fontWeight: 700,
+                fontSize: 13,
+                textDecoration: 'none',
+              }}
+            >
+              <BookIcon size={16} animate /> 翻翻汤单—挑一碗合你口味的故事 ↗
+            </a>
+          </div>
+        </div>
+
+        {/* Bottom Rule Strip (needed for tests) */}
+        <div className="how-to-banner">
+          汤面 → 提问 → 是/不是/不相关 → 每人8问 → 还原真相
+        </div>
       </div>
+
     </main>
   );
 }
@@ -223,7 +268,7 @@ export function Library({
   onChoose: (id: string) => void;
   busy: boolean;
 }) {
-  const [sort, setSort] = useState<SortKey>('good');
+  const [sort, setSort] = useState<SortKey>('new');
   const [q, setQ] = useState('');
   const [excludeNsfl, setExcludeNsfl] = useState(true);
   const [puzzles, setPuzzles] = useState<PuzzleSummary[]>([]);
@@ -262,31 +307,31 @@ export function Library({
       <div className="page-heading">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <BookOpen size={20} color="var(--accent)" />
+            <BookIcon size={22} animate />
             <span className="eyebrow">全库汤单</span>
           </div>
           <h1>总有一碗，让你意想不到。</h1>
           <p>涵盖千道中国公案、司法卷宗与世界经典奇谈。汤底只在游戏结束后揭晓。</p>
         </div>
-        <Button component="a" href="#/" variant="subtle" leftSection={<ArrowLeft size={16} />}>
+        <GameButton component="a" href="#/" tone="grey" leftSection={<ArrowLeftIcon size={18} />}>
           返回首页
-        </Button>
+        </GameButton>
       </div>
 
       <Paper className="library-toolbar" withBorder p="md" radius="md">
         <div className="sort-tabs" role="tablist" aria-label="题库排序">
           {([
-            { key: 'good', label: '高好评', icon: <ThumbsUp size={13} /> },
-            { key: 'mid', label: '中好评', icon: <Sparkles size={13} /> },
+            { key: 'good', label: '高好评', icon: <ThumbsUpIcon size={15} animate /> },
+            { key: 'mid', label: '中好评', icon: <SparkleIcon size={15} animate /> },
             { key: 'low', label: '低好评', icon: null },
-            { key: 'hot', label: '最热', icon: <Flame size={13} /> },
+            { key: 'hot', label: '最热', icon: <FlameIcon size={15} animate /> },
             { key: 'new', label: '最新', icon: null },
           ] as const).map(tab => (
-            <Button
+            <GameButton
               key={tab.key}
               role="tab"
               aria-selected={sort === tab.key}
-              variant={sort === tab.key ? 'filled' : 'subtle'}
+              variant={sort === tab.key ? 'filled' : 'default'}
               color={sort === tab.key ? 'teal' : 'gray'}
               size="xs"
               leftSection={tab.icon}
@@ -297,14 +342,14 @@ export function Library({
               }}
             >
               {tab.label}
-            </Button>
+            </GameButton>
           ))}
         </div>
         <div className="library-filters">
           <TextInput
             aria-label="搜索题目"
             placeholder="搜索标题、汤面或标签…"
-            leftSection={<Search size={15} />}
+            leftSection={<SearchIcon size={16} animate />}
             value={q}
             onChange={e => {
               setQ(e.target.value);
@@ -327,7 +372,7 @@ export function Library({
       {error && (
         <Paper className="empty-state" withBorder p="xl" radius="md" role="alert">
           <p>{error}</p>
-          <Button onClick={() => setRefresh(value => value + 1)}>重新加载</Button>
+          <GameButton tone="blue" onClick={() => setRefresh(value => value + 1)}>重新加载</GameButton>
         </Paper>
       )}
 
@@ -343,28 +388,28 @@ export function Library({
 
       {loading && (
         <div className="loading-state" role="status">
-          <Sparkles size={18} className="spin" color="var(--accent)" />
+          <SparkleIcon size={20} animate />
           正在备汤…
         </div>
       )}
 
       {!loading && !error && puzzles.length === 0 && (
         <Paper className="empty-state" withBorder p="xl" radius="md">
-          <HelpCircle size={36} color="var(--muted)" style={{ margin: '0 auto 12px', opacity: 0.6 }} />
+          <HelpCircleIcon size={44} animate style={{ margin: '0 auto 12px' }} />
           <h3>这份汤单还没有符合的故事</h3>
           <p>试试其他排序档位、去掉「排除重口」，或换个关键词搜搜看。</p>
         </Paper>
       )}
 
       {hasMore && !error && (
-        <Button
+        <GameButton
           className="load-more"
           variant="light"
           disabled={loading}
           onClick={() => setOffset(value => value + 60)}
         >
-          加载更多故事 ({puzzles.length}/1105)
-        </Button>
+          加载更多故事（已显示 {puzzles.length} 道）
+        </GameButton>
       )}
     </main>
   );
@@ -423,14 +468,22 @@ export function Room({
   if (!name.trim()) {
     return (
       <main className="join-gate">
-        <Paper withBorder p="xl" radius="md">
-          <span className="eyebrow">你的朋友正在等你</span>
-          <h1 style={{ margin: '8px 0 20px' }}>加入 {code}</h1>
+        <div className="gartic-main-card">
+          <div className="gartic-ribbon-wrap">
+            <div className="gartic-ribbon">
+              加入房间
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <span className="eyebrow" style={{ color: '#0284c7', fontWeight: 700 }}>你的朋友正在等你</span>
+            <h1 style={{ margin: '8px 0', fontSize: 24, fontWeight: 900, color: '#0f172a' }}>加入 {code}</h1>
+          </div>
           <form
             onSubmit={e => {
               e.preventDefault();
               if (draftName.trim()) onName(draftName.trim());
             }}
+            style={{ maxWidth: 300, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}
           >
             <TextInput
               id="invite-name"
@@ -438,21 +491,27 @@ export function Room({
               autoFocus
               maxLength={16}
               value={draftName}
-              leftSection={<User size={16} />}
+              leftSection={<UserIcon size={18} animate />}
               onChange={e => setDraftName(e.target.value)}
               placeholder="先告诉同桌，你叫什么"
+              size="md"
+              styles={{
+                input: { fontWeight: 700, textAlign: 'center', border: '2px solid #cbd5e1' },
+                label: { fontWeight: 800, marginBottom: 6, color: '#334155' },
+              }}
             />
-            <Button
-              className="primary"
-              style={{ marginTop: 14 }}
+            <GameButton
+              tone="yellow" size="md"
               disabled={!draftName.trim()}
               type="submit"
             >
               入座 →
-            </Button>
+            </GameButton>
           </form>
-          <a href="#/" style={{ display: 'inline-block', marginTop: 16 }}>返回首页</a>
-        </Paper>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <a href="#/" style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>返回首页</a>
+          </div>
+        </div>
       </main>
     );
   }
@@ -465,8 +524,8 @@ export function Room({
           <h2 style={{ marginTop: 16 }}>{status === 'connected' ? '暂时无法加入房间' : '正在为你留座…'}</h2>
           <p>房间 {code} · 昵称 {name}</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-            <Button onClick={retryJoin}>重新加入</Button>
-            <Button variant="subtle" onClick={onLeave}>返回首页</Button>
+            <GameButton tone="blue" onClick={retryJoin}>重新加入</GameButton>
+            <GameButton tone="grey" onClick={onLeave}>返回首页</GameButton>
           </div>
         </Paper>
       </main>
@@ -508,9 +567,9 @@ export function Room({
             </div>
             <h1>{room.puzzle?.title ?? '好故事，等人齐。'}</h1>
           </div>
-          <Button variant="subtle" color="gray" leftSection={<LogOut size={16} />} onClick={onLeave}>
+          <GameButton tone="grey" size="sm" leftSection={<LogOutIcon size={18} animate />} onClick={onLeave}>
             离开房间 ↗
-          </Button>
+          </GameButton>
         </div>
 
         <div className="room-layout">
@@ -522,14 +581,14 @@ export function Room({
                 <span className="eyebrow">本题汤面</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {room.phase === 'revealed' && room.reveal && (
-                    <Button
+                    <GameButton
                       size="xs"
                       className="reveal-view-btn"
-                      leftSection={<Eye size={14} />}
+                      leftSection={<EyeIcon size={16} animate />}
                       onClick={() => setRevealModalOpen(true)}
                     >
                       查看揭晓答案 / 汤底
-                    </Button>
+                    </GameButton>
                   )}
                   {room.puzzle?.nsfl && <Badge color="yellow" variant="light">重口</Badge>}
                 </div>
@@ -541,7 +600,7 @@ export function Room({
                 </ContentWarning>
               ) : (
                 <div className="empty-state">
-                  <BookOpen size={36} color="var(--muted)" style={{ margin: '0 auto 10px', opacity: 0.6 }} />
+                  <BookIcon size={44} animate style={{ margin: '0 auto 10px', opacity: 0.8 }} />
                   <h3>这碗汤还在准备中</h3>
                   <p>房主可在右侧面板选择开始随机抽题，或前往题库挑选。</p>
                 </div>
@@ -582,14 +641,14 @@ export function Room({
                 <span className="room-code-blur">{room.code}</span>
                 <span className="room-code-reveal">{room.code}</span>
               </div>
-              <Button
+              <GameButton
                 fullWidth
                 variant="light"
-                leftSection={<Copy size={15} />}
+                leftSection={<CopyIcon size={16} />}
                 onClick={copyInvite}
               >
                 复制邀请链接
-              </Button>
+              </GameButton>
             </Paper>
 
             {/* Players List */}
@@ -742,7 +801,7 @@ export default function App() {
         <header className="app-header">
           <a className="brand" href="#/" aria-label="海龟汤首页">
             <span className="brand-mark">
-              <Sparkles size={18} />
+              <TurtleIcon size={26} animate />
             </span>
             <div className="brand-title-wrap">
               <span className="brand-title">海龟汤</span>
@@ -752,23 +811,23 @@ export default function App() {
 
           <nav aria-label="主导航">
             <a className={!code && !library ? 'active' : ''} href="#/">
-              <Compass size={15} />
+              <CompassIcon size={18} animate />
               <span>开一桌</span>
             </a>
             <a className={library ? 'active' : ''} href="#/library">
-              <BookOpen size={15} />
+              <BookIcon size={18} animate />
               <span>逛题库</span>
             </a>
             {game.room && !code && (
               <a href={`#/room/${game.room.code}`}>
-                <Radio size={15} />
+                <RadioIcon size={18} animate />
                 <span>回到房间</span>
               </a>
             )}
           </nav>
 
           <span className="header-note">
-            <Bot size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+            <BotIcon size={16} animate style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
             JEV 裁判在线 · 随叫随到
           </span>
         </header>
@@ -801,10 +860,18 @@ export default function App() {
         <Toast message={game.message} onClose={clearToast} />
 
         <footer className="site-footer">
-          <span>海龟汤 · TURTLE SOUP CLUB</span>
+          <span>海龟汤 · TURTLE SOUP CLUB · 仅供学习与私用，尊重原作者</span>
           <span>故事只是开始，问题才是线索。</span>
         </footer>
       </div>
     </GameProvider>
   );
 }
+
+
+
+
+
+
+
+
