@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+coverage/
+
+# Environment variables & secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+
+# SQLite Databases & Cache
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+data/sources/*.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Browser test profiles & logs
+.chrome-test-profile/
+*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Temporary screenshots from review runs
+final-*.png
+review-*.png
+room-*.png
+screenshot-*.png
