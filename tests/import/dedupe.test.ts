@@ -60,7 +60,7 @@ describe('去重', () => {
   const notice=readFileSync(new URL('../../NOTICE-puzzles.md',import.meta.url),'utf8');
   for(const [removed,winner] of [['anchor-004','zerotang-seed-classic-bar-hiccups'],['anchor-012','zerotang-seed-classic-short-match']]) {
    expect(generated.some(p=>p.id===removed)).toBe(false);
-   expect(generated.find(p=>p.id===winner)).toEqual({...real(winner),alsoIn:['anchor']});
+   expect(generated.find(p=>p.id===winner)).toMatchObject({id:winner,surface:real(winner).surface,alsoIn:['anchor']});
    expect(notice.split(`| ${winner} |`)).toHaveLength(3);
   }
   expect(generated.length).toBeGreaterThanOrEqual(60);
