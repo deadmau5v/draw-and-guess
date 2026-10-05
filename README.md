@@ -78,9 +78,18 @@ turtle-soup/
 
 ## 网页界面与组件库
 
-前端使用 **React 18 + Mantine 7**，由统一的 MantineProvider 管理暗色主题。采用深灰蓝背景与薄荷绿强调色，提供简洁的游戏大厅、题库筛选和多人推理房间。按钮、输入框、数字输入、选择器、弹窗、提示及判定徽章使用 Mantine 组件；小屏幕采用单列布局，支持减少动态效果设置。
+当前界面使用 **Next.js + React 18 + CandyUI**。按钮、输入框、多行文本、选择器、卡片、面板、列表、徽章、进度条、弹窗和通知均由 CandyUI 提供；操作图标统一使用 `CandyGameIcon`，不再使用裁剪 PNG 图标、emoji 或自绘 SVG。吉祥物、头像和品牌插画保留。应用 CSS 仅负责布局、背景与响应式，不覆盖组件库皮肤。
 
-修改前端后执行 `pnpm test` 和 `pnpm build`；现有 3001 服务直接托管构建产物，浏览器刷新即可加载新版，无需为前端改版重启房间服务。
+在项目根目录安装 GitHub 依赖：
+
+```powershell
+bun add github:deadmau5v/CandyUI
+bun dev
+```
+
+依赖声明是 `"candy-ui": "github:deadmau5v/CandyUI"`，`bun.lock` 锁定具体 commit，普通 `bun install` 会复现锁定版本而不是自动获取新提交。上游更新后显式更新 CandyUI，再运行类型检查和 Vitest。库仓库需要包含可使用的 dist 构建产物。
+
+默认游戏入口与 API 均为 http://localhost:3001。开发模式下 Next.js 重编译页面，刷新该地址查看更新。`web/src/App.tsx` 保留为兼容 SPA，现有 `build` 脚本仍验证 Vite 兼容入口；不要将其当作 Next.js 生产构建。
 
 ## 🎮 Windows PowerShell 运行指南
 

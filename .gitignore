@@ -35,6 +35,7 @@ final-*.png
 review-*.png
 room-*.png
 screenshot-*.png
+artifacts/
 
 # Next.js build artifacts
 .next/

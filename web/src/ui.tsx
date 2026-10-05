@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { CandyButton } from 'candy-ui';
+import { CandyButton, CandyNavigation } from 'candy-ui';
+import type { CandyColor } from 'candy-ui';
 
 export type ButtonTone = 'blue' | 'green' | 'yellow' | 'red' | 'grey' | 'ghost';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
@@ -18,67 +19,54 @@ export interface GameButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 }
 
 function mapTone(tone?: ButtonTone, variant?: string): {
-  variant: 'blue' | 'green' | 'yellow' | 'pink' | 'purple' | 'ghost';
+  variant: CandyColor;
   appearance: 'solid' | 'outline' | 'soft';
 } {
   if (tone === 'ghost' || variant === 'subtle') {
     return { variant: 'ghost', appearance: 'soft' };
   }
   if (variant === 'light') {
-    const v = tone === 'green' ? 'green' : tone === 'yellow' ? 'yellow' : tone === 'red' ? 'pink' : 'blue';
-    return { variant: v, appearance: 'soft' };
+    const color = tone === 'green' ? 'green' : tone === 'yellow' ? 'yellow' : tone === 'red' ? 'red' : 'blue';
+    return { variant: color, appearance: 'soft' };
   }
   switch (tone) {
     case 'green': return { variant: 'green', appearance: 'solid' };
     case 'yellow': return { variant: 'yellow', appearance: 'solid' };
-    case 'red': return { variant: 'pink', appearance: 'solid' };
-    case 'grey': return { variant: 'ghost', appearance: 'outline' };
-    case 'blue':
-    default:
-      return { variant: 'blue', appearance: 'solid' };
+    case 'red': return { variant: 'red', appearance: 'solid' };
+    case 'grey': return { variant: 'gray', appearance: 'outline' };
+    default: return { variant: 'blue', appearance: 'solid' };
   }
 }
 
+// Compatibility export for existing callers; CandyUI owns all control rendering.
 export function GameButton({
-  tone,
-  color,
-  variant,
-  size = 'md',
-  fullWidth,
-  leftSection,
-  rightSection,
-  component = 'button',
-  className = '',
-  children,
-  type,
-  ...rest
+  tone, color: _color, variant, size = 'md', fullWidth, leftSection, rightSection,
+  component = 'button', className = '', children, type, href, ...rest
 }: GameButtonProps) {
   const mapped = mapTone(tone, variant);
   const candySize = size === 'compact-xs' ? 'xs' : size;
 
   if (component === 'a') {
-    const { href, onClick } = rest as { href?: string; onClick?: React.MouseEventHandler<HTMLAnchorElement> };
-    const classes = [
-      'candy-btn',
-      `candy-btn-${mapped.variant}`,
-      `candy-btn-${candySize}`,
-      'candy-btn-pill',
-      `candy-btn-${mapped.appearance}`,
-      fullWidth ? 'w-full' : '',
-      className,
-    ].filter(Boolean).join(' ');
-
+    // CandyButton has no polymorphic/link API. CandyNavigation renders a real
+    // anchor, preserving href and browser link behavior without copying skins.
+    const { onClick, disabled, style, 'aria-label': label } = rest;
     return (
-      <a className={classes} href={href} onClick={onClick} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...rest.style }}>
-        {leftSection && <span className="candy-btn-icon candy-btn-icon-left">{leftSection}</span>}
-        <span>{children}</span>
-        {rightSection && <span className="candy-btn-icon candy-btn-icon-right">{rightSection}</span>}
-      </a>
+      <CandyNavigation
+        aria-label={label}
+        className={className}
+        style={fullWidth ? { width: '100%', ...style } : style}
+        onClick={onClick as unknown as React.MouseEventHandler<HTMLElement>}
+        items={[{
+          value: 'link', href, disabled, icon: leftSection,
+          label: <>{children}{rightSection}</>,
+        }]}
+      />
     );
   }
 
   return (
     <CandyButton
+      {...rest}
       type={type ?? 'button'}
       variant={mapped.variant}
       appearance={mapped.appearance}
@@ -88,7 +76,6 @@ export function GameButton({
       leftIcon={leftSection}
       rightIcon={rightSection}
       className={className}
-      {...rest}
     >
       {children}
     </CandyButton>

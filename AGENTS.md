@@ -191,6 +191,13 @@ $env:PATH = "$(Split-Path $NODE);$env:PATH"
 
 *本文档由 Team Lead Agent 编写，基于规范 [SPEC.md](SPEC.md) 与实测运行成果生成，作为后续迭代的最高业务与工程上下文。*
 
-## UI 按钮规范
-- 全站按钮只能使用 [web/src/ui.tsx](web/src/ui.tsx) 的 GameButton（tone: blue/green/yellow/red/grey/ghost），禁止直接使用 Mantine Button 或自写按钮样式。
-- 按钮皮肤来自 Kenney UI Pack 2.0（CC0，素材位于 web/public/kenney/，授权见同目录 License.txt）。
+## UI 与图标规范（覆盖上文历史技术栈说明）
+- 当前浏览器入口是 Next.js App Router（`app/`），Express 自定义服务器提供 HTTP 与 Socket.IO；`web/src/App.tsx` 是仍需测试的兼容 SPA 入口。
+- UI 控件、卡片、面板、输入框、多行文本、列表、徽章、进度、弹窗和通知必须直接使用 `candy-ui` 组件。禁止原生控件拼装库 class、Mantine 控件、自建 SVG 或自绘组件皮肤。
+- 所有操作/状态图标使用 `CandyGameIcon`，名称必须在安装版本的图标库中存在；注意 `home`、`bell`、`mute` 等不一定有效，缺失名称会回退成 controller。使用 `house`、`notification`，并验证实际图形。吉祥物、头像和品牌插画不属于操作图标。
+- `web/src/ui.tsx` 仅保留旧 GameButton API 的 CandyUI 兼容适配，新代码直接使用 CandyButton/CandyIconButton。
+- 组件皮肤全部由 `candy-ui/style.css` 提供。应用 CSS 只负责布局、页面背景、响应式与可访问性，不得覆盖 CandyUI 的按钮/输入框/卡片皮肤。
+- 依赖使用 `bun add github:deadmau5v/CandyUI`，禁止绝对本地 `file:` 路径。`bun.lock` 锁定具体 commit；上游推送后需显式更新依赖并验证，普通 `bun install` 不代表自动追踪最新代码。
+- CandyModal 当前版本在 SSR 与客户端的关闭占位不同。Next.js 页面仅在弹窗打开时挂载它，避免 hydration mismatch。
+- 不把可点击控件放进 CandyInput 的 rightIcon：当前库的 actions 容器可能拦截点击。随机昵称按钮与输入框使用相邻布局。
+- 验证：Node 24 运行 Vitest 全量测试和 tsc；`tests/web/candy-ui-audit.test.ts` 防止原生控件、PNG 图标、失效图标名称回归。

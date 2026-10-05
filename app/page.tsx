@@ -1,539 +1,158 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { api } from '../web/src/api';
 import { notify } from '../web/src/store';
 import {
-  CandyAvatar,
-  CandyBadge,
-  CandyButton,
-  CandyCard,
-  CandyIconButton,
-  CandyInput,
-  CandyModal,
-  CandyRibbon,
-  CandySelect,
-  candySound,
+  CandyAvatar, CandyBadge, CandyButton, CandyCard, CandyGameIcon,
+  CandyIconButton, CandyInput, CandyModal, CandyPanel, CandyRibbon,
+  CandySelect, CandyEmptyState,
 } from 'candy-ui';
 
 const roomCodePattern = /^[A-Z0-9]{6}$/;
-
-const AVATAR_PRESETS = [
-  { id: 'turtle', name: '小海龟', src: '/assets/avatars/player-turtle.png' },
-  { id: 'smile', name: '活力笑脸', src: '/assets/avatars/player-smile.png' },
-  { id: 'corgi', name: '侦探柯基', src: '/assets/avatars/player-corgi.png' },
-  { id: 'anime', name: '炫彩少年', src: '/assets/avatars/player-anime.png' },
-  { id: 'panda', name: '呆萌熊猫', src: '/assets/avatars/player-panda.png' },
-  { id: 'burger', name: '汉堡超人', src: '/assets/avatars/player-burger.png' },
-  { id: 'astronaut', name: '宇航员', src: '/assets/avatars/player-astronaut.png' },
-  { id: 'fox', name: '侦探狐狸', src: '/assets/avatars/player-fox.png' },
-  { id: 'gamer', name: '电竞少女', src: '/assets/avatars/player-gamer.png' },
-  { id: 'ghost', name: '萌趣幽灵', src: '/assets/avatars/player-ghost.png' },
-  { id: 'robot', name: '智能机器', src: '/assets/avatars/player-robot.png' },
-  { id: 'witch', name: '见习魔女', src: '/assets/avatars/player-witch.png' },
-];
-
-const RANDOM_NAMES = [
-  '推理小海龟',
-  '迷雾名侦探',
-  '机智小汤圆',
-  '真相追踪者',
-  '清汤名捕',
-  '深海福尔摩斯',
-  '超能大侦探',
-  '逻辑探员',
-];
+const avatars = ['turtle', 'smile', 'corgi', 'anime', 'panda', 'burger', 'astronaut', 'fox', 'gamer', 'ghost', 'robot', 'witch'];
+const avatarNames = ['小海龟', '活力笑脸', '侦探柯基', '炫彩少年', '呆萌熊猫', '汉堡超人', '宇航员', '侦探狐狸', '电竞少女', '萌趣幽灵', '智能机器', '见习魔女'];
+const randomNames = ['推理小海龟', '迷雾名侦探', '机智小汤圆', '真相追踪者', '清汤名捕', '深海福尔摩斯'];
 
 export default function HomePage() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [mode, setMode] = useState<string | number>('classic');
   const [difficulty, setDifficulty] = useState<string | number>('medium');
   const [busy, setBusy] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState('/assets/turtle-hero.png');
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
-
   useEffect(() => {
-    setMounted(true);
     try {
-      const savedName = localStorage.getItem('turtle:name');
-      if (savedName) setName(savedName);
-      const savedAvatar = localStorage.getItem('turtle:avatar');
-      if (savedAvatar) setSelectedAvatar(savedAvatar);
+      setName(localStorage.getItem('turtle:name') || '');
+      const saved = localStorage.getItem('turtle:avatar') || 'turtle';
+      const preset = avatars.includes(saved) ? saved : avatars.find(id => saved === `/assets/avatars/player-${id}.png` || saved === `/assets/avatars/${id}.png`);
+      setSelectedAvatar(!preset ? '/assets/turtle-hero.png' : `/assets/avatars/player-${preset}.png`);
     } catch {}
   }, []);
-
-  const handleAvatarSelect = (avatarSrcOrChar: string) => {
-    setSelectedAvatar(avatarSrcOrChar);
-    if (typeof window !== 'undefined') localStorage.setItem('turtle:avatar', avatarSrcOrChar);
-    candySound.play('pop');
-    setAvatarModalOpen(false);
+  const saveName = (value: string) => {
+    setName(value);
+    localStorage.setItem('turtle:name', value);
+    window.dispatchEvent(new Event('turtle:profile'));
   };
-
-  const rollRandomName = () => {
-    candySound.play('pop');
-    const randomName = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
-    setName(randomName);
-    if (typeof window !== 'undefined') localStorage.setItem('turtle:name', randomName);
-  };
-
-  const getPlayerKey = () => {
-    let key = localStorage.getItem('turtle:playerKey');
-    if (!key) {
-      key = `p-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
-      localStorage.setItem('turtle:playerKey', key);
-    }
-    return key;
-  };
-
-  const create = async (start?: 'random') => {
-    const finalName = name.trim() || '推理小海龟';
+  const create = async (random = false) => {
+    if (busy) return;
     setBusy(true);
     try {
-      const playerKey = getPlayerKey();
+      const finalName = name.trim() || '推理小海龟';
       localStorage.setItem('turtle:name', finalName);
+      let playerKey = localStorage.getItem('turtle:playerKey');
+      if (!playerKey) {
+        playerKey = `p-${crypto.randomUUID()}`;
+        localStorage.setItem('turtle:playerKey', playerKey);
+      }
       const res = await api.createRoom({ name: finalName, playerKey });
-      router.push(`/room/${res.code}${start === 'random' ? '?start=random' : ''}`);
+      router.push(`/room/${res.code}${random ? '?start=random' : ''}`);
     } catch (err) {
       notify(err instanceof Error ? err.message : '创建房间失败');
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
-
   const join = () => {
     const clean = code.trim().toUpperCase();
-    if (!roomCodePattern.test(clean)) {
-      notify('请输入 6 位有效房间码');
-      return;
-    }
-    const finalName = name.trim() || '推理小海龟';
-    localStorage.setItem('turtle:name', finalName);
+    if (!roomCodePattern.test(clean)) return notify('请输入 6 位有效房间码');
+    localStorage.setItem('turtle:name', name.trim() || '推理小海龟');
     router.push(`/room/${clean}`);
   };
-
-  const handleQuickStart = () => {
-    candySound.play('pop');
-    const clean = code.trim().toUpperCase();
-    if (clean && roomCodePattern.test(clean)) {
-      join();
-      return;
-    }
-    create('random');
-  };
-
-  const handleCreateClick = () => {
-    candySound.play('pop');
-    const clean = code.trim().toUpperCase();
-    if (clean && roomCodePattern.test(clean)) {
-      join();
-      return;
-    }
-    create();
-  };
-
-  const handleJoinCardClick = () => {
-    candySound.play('click');
-    const input = document.getElementById('room-code') as HTMLInputElement | null;
-    if (input) {
-      input.focus();
-      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    notify('请在左侧输入 6 位房间号快速加入');
+  const quickStart = () => code.trim() ? join() : void create(true);
+  const focusRoomCode = () => {
+    document.getElementById('room-code')?.focus();
+    notify('输入 6 位房间号即可加入好友的房间');
   };
 
   return (
-    <main className="game-main-content">
-      {/* 满足测试无障碍断言，视觉无多余文本 */}
+    <main className="game-main-content home-main">
       <div className="sr-only">汤面 → 提问 → 是/不是/不相关 → 每人8问 → 还原真相</div>
-
-      <div className="game-board-card">
-        {/* 左半部分：快速开始 */}
+      <CandyPanel className="game-board-card" theme="frosted" style={{ padding: '28px' }}>
         <section className="board-col-left">
-          <CandyRibbon color="blue">快速开始</CandyRibbon>
-
-          {/* 吉祥物头像区域：展示抱汤海龟徽章 */}
-          <div className="mascot-avatar-circle">
-            <img
-              src={selectedAvatar.startsWith('/') ? selectedAvatar : '/assets/turtle-hero.png'}
-              alt="海龟汤吉祥物"
-              className="mascot-hero-img"
-            />
-            <CandyIconButton
-              aria-label="切换形象"
-              size="xs"
-              variant="blue"
-              shape="circle"
-              icon={
-                <img
-                  src="/assets/icons/icon-pencil.png"
-                  alt="编辑"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
-              }
-              onClick={() => {
-                candySound.play('pop');
-                setAvatarModalOpen(true);
-              }}
-              className="mascot-avatar-edit-btn"
-            />
+          <CandyRibbon color="blue" className="home-ribbon">快速开始</CandyRibbon>
+          <div className="mascot-avatar-wrap">
+            <CandyAvatar src={selectedAvatar} alt="海龟汤吉祥物" size="xl" style={{ width: 184, height: 184 }} onEdit={() => setAvatarOpen(true)} editLabel="切换形象" />
           </div>
-
-          {/* 表单输入组 */}
+          <p className="home-welcome">一碗汤，一个谜。今天你能猜出真相吗？</p>
           <div className="game-form-group">
-            {/* 昵称 */}
             <div className="game-form-row">
-              <label htmlFor="nickname" className="game-form-label">
-                <img
-                  src="/assets/icons/icon-user.png"
-                  alt=""
-                  style={{ width: '18px', height: '18px', objectFit: 'contain' }}
-                />
-                <span>你的昵称</span>
-              </label>
-              <div className="game-form-input-box">
-                <CandyInput
-                  id="nickname"
-                  value={name}
-                  placeholder="推理小海龟"
-                  size="md"
-                  onChange={e => {
-                    setName(e.target.value);
-                    if (typeof window !== 'undefined') localStorage.setItem('turtle:name', e.target.value);
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleCreateClick();
-                  }}
-                  rightIcon={
-                    <CandyIconButton
-                      aria-label="随机昵称"
-                      size="xs"
-                      variant="ghost"
-                      shape="circle"
-                      icon={
-                        <img
-                          src="/assets/icons/icon-dice.png"
-                          alt="随机"
-                          style={{ width: '22px', height: '22px', display: 'block' }}
-                        />
-                      }
-                      onClick={rollRandomName}
-                    />
-                  }
-                  style={{ width: '100%' }}
-                />
+              <label htmlFor="nickname" className="game-form-label"><CandyGameIcon name="user" size={22} />你的昵称</label>
+              <div className="nickname-controls">
+                <CandyInput id="nickname" value={name} placeholder="推理小海龟" size="md" style={{ width: '100%' }}
+                  onChange={e => saveName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void create(); }} />
+                <CandyIconButton aria-label="随机昵称" variant="blue" size="sm" icon={<CandyGameIcon name="change" size={20} />}
+                  onClick={() => saveName(randomNames[Math.floor(Math.random() * randomNames.length)])} />
               </div>
             </div>
-
-            {/* 游戏模式 */}
             <div className="game-form-row">
-              <label htmlFor="game-mode" className="game-form-label">
-                <img
-                  src="/assets/icons/icon-gamepad.png"
-                  alt=""
-                  style={{ width: '20px', height: '20px', objectFit: 'contain' }}
-                />
-                <span>游戏模式</span>
-              </label>
-              <div className="game-form-input-box">
-                <CandySelect
-                  id="game-mode"
-                  value={mode}
-                  onChange={val => setMode(val)}
-                  size="md"
-                  color="blue"
-                  fullWidth
-                  options={[
-                    { value: 'classic', label: '经典海龟汤' },
-                    { value: 'free', label: '自由提问模式' },
-                    { value: 'turns', label: '轮流提问模式' },
-                  ]}
-                />
-              </div>
+              <label htmlFor="game-mode" className="game-form-label"><CandyGameIcon name="controller" size={22} />游戏模式</label>
+              <CandySelect id="game-mode" value={mode} onChange={setMode} fullWidth color="blue" options={[
+                { value: 'classic', label: '经典海龟汤' }, { value: 'free', label: '自由提问模式' }, { value: 'turns', label: '轮流提问模式' },
+              ]} />
             </div>
-
-            {/* 难度选择 */}
             <div className="game-form-row">
-              <label htmlFor="difficulty-select" className="game-form-label">
-                <img
-                  src="/assets/icons/icon-signal.png"
-                  alt=""
-                  style={{ width: '20px', height: '20px', objectFit: 'contain' }}
-                />
-                <span>难度选择</span>
-              </label>
-              <div className="game-form-input-box">
-                <CandySelect
-                  id="difficulty-select"
-                  value={difficulty}
-                  onChange={val => setDifficulty(val)}
-                  size="md"
-                  color="blue"
-                  fullWidth
-                  options={[
-                    { value: 'all', label: '全部难度' },
-                    { value: 'easy', label: '入门 (★)' },
-                    { value: 'medium', label: '中等 (★★)' },
-                    { value: 'hard', label: '极度烧脑 (★★★)' },
-                  ]}
-                />
-              </div>
+              <label htmlFor="difficulty-select" className="game-form-label"><CandyGameIcon name="star" size={22} />难度选择</label>
+              <CandySelect id="difficulty-select" value={difficulty} onChange={setDifficulty} fullWidth color="blue" options={[
+                { value: 'all', label: '全部难度' }, { value: 'easy', label: '入门' }, { value: 'medium', label: '中等' }, { value: 'hard', label: '极度烧脑' },
+              ]} />
             </div>
-
-            {/* 房间号 */}
             <div className="game-form-row">
-              <label htmlFor="room-code" className="game-form-label">
-                <img
-                  src="/assets/icons/icon-hash.png"
-                  alt=""
-                  style={{ width: '18px', height: '18px', objectFit: 'contain' }}
-                />
-                <span>房间号</span>
-              </label>
-              <div className="game-form-input-box">
-                <CandyInput
-                  id="room-code"
-                  value={code}
-                  placeholder="可不填，留空则自动创建"
-                  size="md"
-                  maxLength={6}
-                  style={{ letterSpacing: code ? '2px' : 'normal', textTransform: 'uppercase', fontWeight: 700, width: '100%' }}
-                  onChange={e => setCode(e.target.value.toUpperCase().replace(/\s/g, ''))}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleQuickStart();
-                  }}
-                />
-              </div>
+              <label htmlFor="room-code" className="game-form-label"><CandyGameIcon name="house" size={22} />房间号</label>
+              <CandyInput id="room-code" value={code} placeholder="留空则自动创建" maxLength={6} style={{ width: '100%' }}
+                onChange={e => setCode(e.target.value.toUpperCase().replace(/\s/g, ''))} onKeyDown={e => { if (e.key === 'Enter') quickStart(); }} />
             </div>
           </div>
-
-          {/* 底部两大按钮：使用组件库 CandyButton */}
           <div className="game-action-buttons">
-            <CandyButton
-              variant="yellow"
-              size="lg"
-              shape="pill"
-              fullWidth
-              disabled={busy}
-              onClick={handleQuickStart}
-              aria-label="单人随机一碗"
-              leftIcon={
-                <span className="btn-circle-badge">
-                  ▶
-                </span>
-              }
-            >
-              <div className="btn-candy-inner">
-                <span className="btn-main-title" style={{ color: '#1e3a8a' }}>快速开始</span>
-                <span className="btn-sub-desc" style={{ color: '#854d0e' }}>随机匹配或创建房间</span>
-              </div>
-            </CandyButton>
-
-            <CandyButton
-              variant="blue"
-              size="lg"
-              shape="pill"
-              fullWidth
-              disabled={busy}
-              onClick={handleCreateClick}
-              aria-label="创建房间 →"
-              leftIcon={
-                <span className="btn-circle-badge">
-                  <img
-                    src="/assets/icons/icon-plus.png"
-                    alt="+"
-                    style={{ width: '14px', height: '14px', objectFit: 'contain' }}
-                  />
-                </span>
-              }
-            >
-              <div className="btn-candy-inner">
-                <span className="btn-main-title" style={{ color: '#ffffff' }}>创建房间</span>
-                <span className="btn-sub-desc" style={{ color: '#e0f2fe' }}>邀请好友一起玩</span>
-              </div>
-            </CandyButton>
+            <CandyButton variant="yellow" size="xl" shape="pill" fullWidth loading={busy} onClick={quickStart} aria-label="单人随机一碗" leftIcon={<CandyGameIcon name="play" size={28} />}><span className="home-action-copy"><strong>快速开始</strong><small>随机来一碗，马上开玩</small></span></CandyButton>
+            <CandyButton variant="blue" size="xl" shape="pill" fullWidth disabled={busy} onClick={() => void create()} aria-label="创建房间 →" leftIcon={<CandyGameIcon name="plus" size={28} />}><span className="home-action-copy"><strong>创建房间</strong><small>邀请好友一起推理</small></span></CandyButton>
           </div>
         </section>
-
-        {/* 右半部分：进入游戏 */}
         <section className="board-col-right">
-          <CandyRibbon color="blue">进入游戏</CandyRibbon>
-
-          {/* 2x2 功能卡片网格：使用组件库 CandyCard */}
+          <CandyRibbon color="blue" className="home-ribbon">进入游戏</CandyRibbon>
           <div className="feature-grid-2x2">
-            <CandyCard
-              title="创建房间"
-              description="自定义规则，邀请好友"
-              icon={
-                <img
-                  src="/assets/icons/icon-house.png"
-                  alt="创建房间"
-                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                />
-              }
-              footer={<div className="card-arrow-circle">›</div>}
-              className="feature-action-card card-blue"
-              onClick={handleCreateClick}
-              role="button"
-              tabIndex={0}
-            />
-
-            <CandyCard
-              title="加入房间"
-              description="输入房间号，快速加入"
-              icon={
-                <img
-                  src="/assets/icons/icon-users.png"
-                  alt="加入房间"
-                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                />
-              }
-              footer={<div className="card-arrow-circle">›</div>}
-              className="feature-action-card card-yellow"
-              onClick={handleJoinCardClick}
-              role="button"
-              tabIndex={0}
-            />
-
-            <Link href="/library" style={{ textDecoration: 'none' }}>
-              <CandyCard
-                title="题库挑战"
-                description="海量题目，单人练习"
-                icon={
-                  <img
-                    src="/assets/icons/icon-quiz.png"
-                    alt="题库挑战"
-                    style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                  />
-                }
-                footer={<div className="card-arrow-circle">›</div>}
-                className="feature-action-card card-green"
-              />
-            </Link>
-
-            <CandyCard
-              title="排行榜"
-              description="看看谁才是推理之王"
-              icon={
-                <img
-                  src="/assets/icons/icon-trophy.png"
-                  alt="排行榜"
-                  style={{ width: '48px', height: '48px', objectFit: 'contain' }}
-                />
-              }
-              footer={<div className="card-arrow-circle">›</div>}
-              className="feature-action-card card-purple"
-              onClick={() => {
-                candySound.play('pop');
-                setLeaderboardOpen(true);
-              }}
-              role="button"
-              tabIndex={0}
-            />
+            {([
+              { title: '创建房间', description: '自定义规则，邀请好友', icon: 'house', color: 'blue', action: () => void create(), disabled: busy },
+              { title: '加入房间', description: '输入房间号，快速加入', icon: 'users', color: 'yellow', action: focusRoomCode },
+              { title: '题库挑战', description: '海量谜题，等你来解', icon: 'book', color: 'green', action: () => router.push('/library') },
+              { title: '排行榜', description: '谁才是真正的推理之王', icon: 'trophy', color: 'purple', action: () => setLeaderboardOpen(true) },
+            ] as const).map(entry => <CandyButton key={entry.title} variant={entry.color} shape="rounded" appearance="soft" className="home-entry" fullWidth disabled={'disabled' in entry && entry.disabled} onClick={entry.action} aria-label={entry.title}>
+              <span className="home-entry-content">
+                <span className="home-entry-art"><CandyGameIcon name={entry.icon} size={64} /><CandyGameIcon name="arrow-right" size={24} /></span>
+                <strong>{entry.title}</strong><span className="home-entry-description">{entry.description}</span>
+              </span>
+            </CandyButton>)}
           </div>
-
-          {/* 底部新手规则卡片：展示思考小海龟插画 */}
-          <div className="novice-rules-card">
-            <div className="novice-rules-tag">
-              <CandyBadge variant="yellow" size="md">新手规则</CandyBadge>
-            </div>
-            <div className="novice-rules-mascot">
-              <img
-                src="/assets/turtle-think.png"
-                alt="思考解密小海龟"
-                style={{ width: '84px', height: '84px', objectFit: 'contain', display: 'block' }}
-              />
-            </div>
-            <div className="novice-rules-list">
-              <div className="novice-rule-row">
-                <CandyBadge variant="blue" size="sm">1</CandyBadge>
-                <span>出题者提供一个不完整的故事（海龟汤）。</span>
-              </div>
-              <div className="novice-rule-row">
-                <CandyBadge variant="blue" size="sm">2</CandyBadge>
-                <span>你可以通过提问来获取“是 / 否 / 无关”的答案。</span>
-              </div>
-              <div className="novice-rule-row">
-                <CandyBadge variant="blue" size="sm">3</CandyBadge>
-                <span>根据线索进行推理，猜出故事的完整真相！</span>
+          <CandyCard className="home-guide">
+            <div className="home-guide-layout">
+              <img src="/assets/turtle-think.png" alt="" className="home-guide-mascot" />
+              <div><h2>第一次喝汤？</h2><p className="home-guide-subtitle">三步入门，开启你的侦探时刻</p>
+                <ol className="home-guide-steps">
+                  <li><CandyBadge variant="blue">1</CandyBadge><span><strong>读汤面</strong>，发现故事里的反常之处。</span></li>
+                  <li><CandyBadge variant="blue">2</CandyBadge><span><strong>问问题</strong>，收集「是 / 不是 / 不相关」的线索。</span></li>
+                  <li><CandyBadge variant="blue">3</CandyBadge><span><strong>猜真相</strong>，串起线索，还原完整故事！</span></li>
+                </ol>
               </div>
             </div>
-          </div>
+          </CandyCard>
         </section>
-      </div>
-
-      {/* 头像选择弹窗 - 使用 CandyModal 组件 */}
-      {mounted && avatarModalOpen && (
-        <CandyModal
-          isOpen={avatarModalOpen}
-          onClose={() => setAvatarModalOpen(false)}
-          title="选择专属形象"
-          titleStyle="ribbon"
-          ribbonColor="blue"
-        >
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginTop: '14px' }}>
-            {AVATAR_PRESETS.map(preset => (
-              <button
-                key={preset.id}
-                type="button"
-                className={`avatar-btn ${selectedAvatar === preset.src ? 'selected' : ''}`}
-                onClick={() => handleAvatarSelect(preset.src)}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
-              >
-                <CandyAvatar src={preset.src} size="md" />
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>{preset.name}</span>
-              </button>
-            ))}
-          </div>
-        </CandyModal>
-      )}
-
-      {/* 排行榜弹窗 - 使用 CandyModal 组件 */}
-      {mounted && leaderboardOpen && (
-        <CandyModal
-          isOpen={leaderboardOpen}
-          onClose={() => setLeaderboardOpen(false)}
-          title="推理排行榜"
-          titleStyle="ribbon"
-          ribbonColor="gold"
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '12px', background: '#fef9c3', border: '2px solid #fef08a' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CandyBadge variant="yellow" size="sm">1</CandyBadge>
-                <span style={{ fontWeight: 800 }}>逻辑鬼才 · 福尔摩汤</span>
-              </div>
-              <CandyBadge variant="yellow" size="md">128 汤破解</CandyBadge>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '12px', background: '#f1f5f9', border: '2px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CandyBadge variant="gray" size="sm">2</CandyBadge>
-                <span style={{ fontWeight: 800 }}>名侦探可可</span>
-              </div>
-              <CandyBadge variant="gray" size="md">96 汤破解</CandyBadge>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '12px', background: '#f8fafc', border: '2px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CandyBadge variant="choco" size="sm">3</CandyBadge>
-                <span style={{ fontWeight: 800 }}>机智小汤圆</span>
-              </div>
-              <CandyBadge variant="gray" size="md">74 汤破解</CandyBadge>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '12px', background: '#e0f2fe', border: '2px solid #bae6fd' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CandyBadge variant="blue" size="sm">4</CandyBadge>
-                <span style={{ fontWeight: 800 }}>{name || '推理小海龟'} (你)</span>
-              </div>
-              <CandyBadge variant="blue" size="md">42 汤破解</CandyBadge>
-            </div>
-          </div>
-        </CandyModal>
-      )}
+      </CandyPanel>
+      {avatarOpen && <CandyModal isOpen={avatarOpen} onClose={() => setAvatarOpen(false)} title="选择专属形象" titleStyle="ribbon" ribbonColor="blue">
+        <div className="avatar-grid">
+          {avatars.map((id, i) => {
+            const src = `/assets/avatars/player-${id}.png`;
+            return <CandyButton key={id} className="avatar-option" shape="rounded" variant={selectedAvatar === src ? 'blue' : 'ghost'} appearance="soft" aria-pressed={selectedAvatar === src} aria-label={avatarNames[i]}
+              onClick={() => { setSelectedAvatar(src); localStorage.setItem('turtle:avatar', src); window.dispatchEvent(new Event('turtle:profile')); setAvatarOpen(false); }}>
+              <span className="avatar-choice"><CandyAvatar src={src} size="md" />{avatarNames[i]}</span>
+            </CandyButton>;
+          })}
+        </div>
+      </CandyModal>}
+      {leaderboardOpen && <CandyModal isOpen={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} title="推理排行榜" titleStyle="ribbon" ribbonColor="gold">
+        <CandyEmptyState title="排行榜暂未开放" description="战绩榜单接入后将在这里展示，当前不展示模拟排名。" icon={<CandyGameIcon name="trophy" size={40} />} />
+      </CandyModal>}
     </main>
   );
 }

@@ -7,14 +7,12 @@ it('HTML 提供中文无障碍与 React 入口', () => {
   expect(html).toContain('id="root"');
   expect(html).toContain('/src/main.tsx');
 });
-it('主题使用冷色薄荷强调和真实 Mantine 入口，在 900px 以下单列', () => {
-  const main = readFileSync('web/src/main.tsx', 'utf8');
-  expect(main).toContain('GameProvider');
+it('CandyUI 提供组件皮肤，应用样式只负责布局与响应式', () => {
+  expect(readFileSync('web/src/main.tsx', 'utf8')).toContain('GameProvider');
+  expect(readFileSync('app/globals.css', 'utf8')).toContain('candy-ui/style.css');
   const css = readFileSync('web/src/styles.css', 'utf8');
-  expect(css).toContain('#5eead4');
-  expect(css).not.toContain('soup-art');
-  expect(css).not.toContain('gradient');
-  expect(css).toMatch(/@media\s*\(max-width:\s*899px\)/);
+  expect(css).toMatch(/@media\s*\(max-width:\s*800px\)/);
   expect(css).toContain('prefers-reduced-motion');
-  expect(css).toContain('.verdict.darkred');
+  expect(css).not.toMatch(/\.candy-(?:btn|card|input|ribbon)/);
+  expect(css).not.toMatch(/\.verdict\.|\.ask-textarea|\.modal-dialog|\.avatar-btn/);
 });
