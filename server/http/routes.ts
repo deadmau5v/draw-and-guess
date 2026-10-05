@@ -30,10 +30,5 @@ export function createRoutes(deps:AppDeps) {
   res.status(201).json(result.value);
  });
  router.use('/api',(_req,res)=>res.status(404).json({code:'NOT_FOUND',msg:'接口不存在'}));
- const dir=resolve('dist/web');
- if(process.env.NODE_ENV==='production' && existsSync(resolve(dir,'index.html'))) {
-  router.use(express.static(dir));
-  router.get('/{*path}',(_req,res)=>res.sendFile(resolve(dir,'index.html')));
- }
  return router;
 }

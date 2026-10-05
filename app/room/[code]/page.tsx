@@ -9,6 +9,7 @@ import { joinRoom, leaveRoom, actions } from '../../../web/src/socket';
 import { GuessModal, RevealModal, ReconnectBanner } from '../../../web/src/components';
 import { PlayingRoom } from '../../../web/src/PlayingRoom';
 import { WaitingRoom } from '../../../web/src/WaitingRoom';
+import { copyTextToClipboard } from '../../../web/src/clipboard';
 import { triggerCandyConfetti, CandyButton, CandyPanel, CandyInput, CandyModal } from 'candy-ui';
 
 export default function RoomPage() {
@@ -49,10 +50,13 @@ export default function RoomPage() {
   }, [room?.phase, room?.round]);
   const onLeave = () => { leaveRoom(); router.push('/'); };
   const copyInvite = async () => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}/room/${code}`);
+    const url = `${window.location.origin}/room/${code}`;
+    const ok = await copyTextToClipboard(url);
+    if (ok) {
       notify('邀请链接已复制');
-    } catch { notify('复制失败'); }
+    } else {
+      notify('复制失败');
+    }
   };
   const nameModal = nameOpen && <CandyModal isOpen={nameOpen} onClose={onLeave} title="填写侦探昵称">
     <CandyInput aria-label="侦探昵称" placeholder="请输入昵称" value={name} onChange={e => setName(e.target.value)} />

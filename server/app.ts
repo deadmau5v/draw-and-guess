@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import express from 'express';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
@@ -30,6 +32,12 @@ export function createApp(deps: AppDeps) {
     app.use((req, res, next) => {
       Promise.resolve(deps.nextHandler!(req, res)).catch(next);
     });
+  } else {
+    const dir = resolve('dist/web');
+    if (existsSync(resolve(dir, 'index.html'))) {
+      app.use(express.static(dir));
+      app.get('/{*path}', (_req, res) => res.sendFile(resolve(dir, 'index.html')));
+    }
   }
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

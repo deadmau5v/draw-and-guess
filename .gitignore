@@ -41,3 +41,5 @@ artifacts/
 .next/
 *.tsbuildinfo
 
+logs/
+.edgeone/

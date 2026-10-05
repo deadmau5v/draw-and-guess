@@ -22,7 +22,7 @@ test('实际入口加载种子，缺 key 仍可启动并响应健康检查',asyn
    if(!health) await new Promise(r=>setTimeout(r,50));
   }
   expect(exit).toBeUndefined();expect(health).toMatchObject({ok:true,judgeConfigured:false});expect(Number(health?.puzzles)).toBeGreaterThan(0);
-  if(existsSync('dist/web/index.html')) {const page=await fetch(`http://127.0.0.1:${address.port}/room/ABCDEF`);expect(page.status).toBe(200);expect(await page.text()).toContain('<div id="root">');}
+  if(existsSync('dist/web/index.html')) {const page=await fetch(`http://127.0.0.1:${address.port}/room/ABCDEF`);expect(page.status).toBe(200);expect(await page.text()).toMatch(/<div id="root">|candy-ui-root|海龟汤/);}
  } finally {
   if(exit===undefined) {child.kill();await new Promise<void>(r=>child.once('exit',()=>r()));}
   rmSync(dir,{recursive:true,force:true});

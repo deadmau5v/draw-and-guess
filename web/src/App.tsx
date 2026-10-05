@@ -15,6 +15,7 @@ import {
   AskBox, ContentWarning, GuessModal, HostPanel, PlayerList, PuzzleCard,
   QuestionLog, ReconnectBanner, RevealModal, Toast,
 } from './components';
+import { copyTextToClipboard } from './clipboard';
 
 function readStorage(key: string): string {
   try { return localStorage.getItem(key) ?? ''; } catch { return ''; }
@@ -274,8 +275,13 @@ export function Room({ code, name, playerKey, onName: _onName, onLeave }: {
   const turnName = room.players.find(p => p.key === room.turnKey)?.name ?? '等待在线玩家';
   const notMyTurn = room.settings.turnMode === 'turns' && room.turnKey !== playerKey;
   const copyInvite = async () => {
-    try { await navigator.clipboard.writeText(location.href); notify('邀请链接已复制'); candySound.play('pop'); }
-    catch { notify('复制失败'); }
+    const ok = await copyTextToClipboard(location.href);
+    if (ok) {
+      notify('邀请链接已复制');
+      candySound.play('pop');
+    } else {
+      notify('复制失败');
+    }
   };
   return <main>
     <ReconnectBanner status={status} />
