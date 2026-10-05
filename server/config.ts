@@ -9,7 +9,7 @@ const schema = z.object({
  PORT: z.coerce.number().int().min(1).max(65535).default(3001),
  DB_PATH: z.string().min(1).default('./turtle.db'),
 });
-export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
+export function loadConfig(env: Record<string, string | undefined> = process.env) {
  if (env === process.env) dotenv({ quiet: true });
  const v = schema.parse(env);
  const apiKey = v.OPENROUTER_API_KEY.trim();

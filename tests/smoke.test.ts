@@ -22,5 +22,5 @@ test('脚手架提供严格 TypeScript 配置', () => {
     strict: true, jsx: 'react-jsx', skipLibCheck: true, noEmit: true,
     types: ['node', 'vite/client'], paths: { '@shared/*': ['shared/*'] },
   });
-  expect(config.include).toEqual(['server', 'shared', 'scripts', 'tests', 'web/src', '*.ts']);
+  expect(config.include.filter((i: string) => !i.startsWith('.next'))).toEqual(['server', 'shared', 'scripts', 'tests', 'web/src', '*.ts']);
 });

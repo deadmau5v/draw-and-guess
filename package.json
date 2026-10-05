@@ -6,7 +6,7 @@
         "node": ">=24 <25"
     },
     "scripts": {
-        "dev": "concurrently -k -n server,web \"node --watch --import ./scripts/register-ts.mjs server/index.ts\" \"vite\"",
+        "dev": "node --import ./scripts/register-ts.mjs server/index.ts",
         "build": "vite build --configLoader native && tsc -p tsconfig.json --noEmit",
         "start": "node --import ./scripts/register-ts.mjs server/index.ts",
         "test": "vitest run",
@@ -15,15 +15,12 @@
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {
-        "@mantine/core": "^7.17.8",
-        "@mantine/hooks": "^7.17.8",
-        "@rive-app/react-canvas": "^4.36.0",
-        "canvas-confetti": "^1.9.4",
+        "candy-ui": "file:C:/Users/d5v/Desktop/CandyUI",
         "dotenv": "^18.0.5",
         "express": "^5.2.1",
-        "framer-motion": "^14.0.0",
         "lucide-react": "^1.51.0",
         "nanoid": "^6.0.1",
+        "next": "^16.3.8",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "socket.io": "^4.8.4",
@@ -32,7 +29,6 @@
     },
     "devDependencies": {
         "@testing-library/react": "^16.3.3",
-        "@types/canvas-confetti": "^1.9.0",
         "@types/express": "^5.0.6",
         "@types/node": "^24.19.1",
         "@types/react": "^18.3.31",
