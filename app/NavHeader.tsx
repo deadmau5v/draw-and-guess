@@ -8,6 +8,7 @@ import {
   CandyAvatar,
   CandyBadge,
   CandyButton,
+  CandyIconButton,
   CandyModal,
   candySound,
 } from 'candy-ui';
@@ -137,19 +138,21 @@ export function NavHeader() {
 
           {/* 右侧通知、个人胶囊、音效 */}
           <div className="header-right-group">
-            <button
-              type="button"
-              className="header-bell-btn"
+            <CandyIconButton
+              variant="ghost"
+              size="md"
+              shape="circle"
               onClick={handleBellClick}
               title="系统通知"
               aria-label="系统通知"
-            >
-              <img
-                src="/assets/icons/bell-button.png"
-                alt="通知"
-                style={{ width: '38px', height: '38px', display: 'block' }}
-              />
-            </button>
+              icon={
+                <img
+                  src="/assets/icons/bell-button.png"
+                  alt="通知"
+                  style={{ width: '38px', height: '38px', display: 'block' }}
+                />
+              }
+            />
 
             <div
               className="header-user-pill"

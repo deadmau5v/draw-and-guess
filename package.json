@@ -15,7 +15,7 @@
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {
-        "candy-ui": "file:C:/Users/d5v/Desktop/CandyUI",
+        "candy-ui": "github:deadmau5v/CandyUI",
         "dotenv": "^18.0.5",
         "express": "^5.2.1",
         "lucide-react": "^1.51.0",
@@ -35,7 +35,7 @@
         "@types/react-dom": "^18.3.7",
         "@vitejs/plugin-react": "^6.1.1",
         "concurrently": "^10.0.5",
-        "jsdom": "^30.1.1",
+        "jsdom": "30.1.1",
         "tsx": "^4.23.15",
         "typescript": "^5.9.3",
         "vite": "^8.3.2",

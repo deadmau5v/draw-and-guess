@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { PuzzleSummary, SortKey } from '@shared/protocol';
 import { api } from '../../web/src/api';
 import { notify } from '../../web/src/store';
-import { GameButton } from '../../web/src/ui';
+import { CandyButton, CandyCheckbox, CandyInput } from 'candy-ui';
 import { PuzzleCard } from '../../web/src/components';
 
 export default function LibraryPage() {
@@ -67,12 +67,14 @@ export default function LibraryPage() {
             const labels: Record<string, string> = { good: '高好评', mid: '中好评', low: '低好评', hot: '最热', new: '最新' };
             const isSelected = sort === key;
             return (
-              <button
+              <CandyButton
                 key={key}
-                type="button"
                 role="tab"
                 aria-selected={isSelected}
-                className={`candy-btn candy-btn-sm candy-btn-pill ${isSelected ? 'candy-btn-blue candy-btn-solid' : 'candy-btn-ghost candy-btn-outline'}`}
+                variant={isSelected ? 'blue' : 'ghost'}
+                appearance={isSelected ? 'solid' : 'soft'}
+                size="sm"
+                shape="pill"
                 onClick={() => {
                   setSort(key);
                   setOffset(0);
@@ -80,40 +82,36 @@ export default function LibraryPage() {
                 }}
               >
                 {labels[key]}
-              </button>
+              </CandyButton>
             );
           })}
         </div>
 
-        <div className="search-row">
+        <div className="search-row" style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', marginTop: '14px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '240px' }}>
             <label htmlFor="lib-search" style={{ display: 'block', fontWeight: 600, marginBottom: '6px' }}>搜索题目</label>
-            <input
+            <CandyInput
               id="lib-search"
-              type="text"
               placeholder="搜索题目"
-              className="ask-textarea"
-              style={{ width: '100%', padding: '10px 14px' }}
+              size="md"
               value={q}
               onChange={e => {
                 setQ(e.target.value);
                 setOffset(0);
               }}
+              style={{ width: '100%' }}
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
-              <input
-                type="checkbox"
-                checked={excludeNsfl}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                onChange={e => {
-                  setExcludeNsfl(e.target.checked);
-                  setOffset(0);
-                }}
-              />
-              排除重口
-            </label>
+          <div style={{ display: 'flex', alignItems: 'center', height: '42px' }}>
+            <CandyCheckbox
+              checked={excludeNsfl}
+              onChange={checked => {
+                setExcludeNsfl(checked);
+                setOffset(0);
+              }}
+              label="排除重口"
+              color="blue"
+            />
           </div>
         </div>
       </section>

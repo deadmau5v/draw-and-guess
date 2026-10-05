@@ -14,8 +14,7 @@ import {
   ContentWarning,
 } from '../../../web/src/components';
 import { remainingQuota } from '../../../web/src/game';
-import { GameButton } from '../../../web/src/ui';
-import { triggerCandyConfetti, candySound } from 'candy-ui';
+import { triggerCandyConfetti, candySound, CandyButton } from 'candy-ui';
 
 export default function RoomPage() {
   const params = useParams();
@@ -78,7 +77,7 @@ export default function RoomPage() {
       <main>
         <h2>房间 {code}</h2>
         <p>正在加入房间...</p>
-        <GameButton tone="grey" size="sm" onClick={onLeave}>返回首页</GameButton>
+        <CandyButton variant="ghost" appearance="outline" size="sm" shape="pill" onClick={onLeave}>返回首页</CandyButton>
       </main>
     );
   }
@@ -100,13 +99,13 @@ export default function RoomPage() {
           </div>
           <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{room.puzzle?.title ?? '等待开局'}</h2>
         </div>
-        <GameButton tone="grey" size="sm" onClick={onLeave}>离开房间 ↗</GameButton>
+        <CandyButton variant="ghost" appearance="outline" size="sm" shape="pill" onClick={onLeave}>离开房间 ↗</CandyButton>
       </header>
 
       <div style={{ margin: '14px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span>房间码: <strong className="room-code-tag">{room.code}</strong></span>
-          <GameButton tone="blue" size="xs" onClick={copyInvite}>复制邀请链接</GameButton>
+          <CandyButton variant="blue" size="xs" shape="pill" onClick={copyInvite}>复制邀请链接</CandyButton>
         </div>
       </div>
 

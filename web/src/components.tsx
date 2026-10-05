@@ -4,7 +4,7 @@ import { api } from './api';
 import { GameButton } from './ui';
 import type { ProgressView, PuzzleSummary, RevealView, RoomView, Settings, Verdict } from '@shared/protocol';
 import { verdictTone } from './game';
-import { CandyAvatar } from 'candy-ui';
+import { CandyAvatar, CandyButton } from 'candy-ui';
 
 const AVATAR_CHARACTERS = ['bear', 'cat', 'fox', 'rabbit', 'frog', 'smile', 'crown', 'user'] as const;
 export function getPlayerCharacter(key: string, name: string): (typeof AVATAR_CHARACTERS)[number] {
@@ -234,42 +234,54 @@ export function RatingBar({ onRate, disabled }: { onRate: (score: 1 | 0 | -1, fu
   };
   return (
     <div role="group" aria-label="故事评价" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      <button
+      <CandyButton
         type="button"
-        className={`candy-btn candy-btn-xs candy-btn-pill ${rated === 1 ? 'candy-btn-green candy-btn-solid' : 'candy-btn-ghost candy-btn-outline'}`}
+        variant={rated === 1 ? 'green' : 'ghost'}
+        appearance={rated === 1 ? 'solid' : 'outline'}
+        size="xs"
+        shape="pill"
         aria-pressed={rated === 1}
         disabled={disabled}
         onClick={() => click(1)}
       >
         好汤
-      </button>
-      <button
+      </CandyButton>
+      <CandyButton
         type="button"
-        className={`candy-btn candy-btn-xs candy-btn-pill ${rated === 0 ? 'candy-btn-yellow candy-btn-solid' : 'candy-btn-ghost candy-btn-outline'}`}
+        variant={rated === 0 ? 'yellow' : 'ghost'}
+        appearance={rated === 0 ? 'solid' : 'outline'}
+        size="xs"
+        shape="pill"
         aria-pressed={rated === 0}
         disabled={disabled}
         onClick={() => click(0)}
       >
         一般
-      </button>
-      <button
+      </CandyButton>
+      <CandyButton
         type="button"
-        className={`candy-btn candy-btn-xs candy-btn-pill ${rated === -1 ? 'candy-btn-pink candy-btn-solid' : 'candy-btn-ghost candy-btn-outline'}`}
+        variant={rated === -1 ? 'pink' : 'ghost'}
+        appearance={rated === -1 ? 'solid' : 'outline'}
+        size="xs"
+        shape="pill"
         aria-pressed={rated === -1}
         disabled={disabled}
         onClick={() => click(-1)}
       >
         不喜欢
-      </button>
-      <button
+      </CandyButton>
+      <CandyButton
         type="button"
-        className={`candy-btn candy-btn-xs candy-btn-pill ${funny ? 'candy-btn-yellow candy-btn-solid' : 'candy-btn-ghost candy-btn-outline'}`}
+        variant={funny ? 'yellow' : 'ghost'}
+        appearance={funny ? 'solid' : 'outline'}
+        size="xs"
+        shape="pill"
         aria-pressed={funny}
         disabled={disabled}
         onClick={toggleFunny}
       >
         好笑
-      </button>
+      </CandyButton>
     </div>
   );
 }
