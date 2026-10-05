@@ -1,16 +1,19 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useGameRouter } from '../../gameNavigation';
+import { usePageLoading } from '../../../web/src/loading';
 import { useGame, notify } from '../../../web/src/store';
 import { joinRoom, leaveRoom, actions } from '../../../web/src/socket';
-import { QuestionLog, AskBox, PlayerList, HostPanel, GuessModal, RevealModal, ContentWarning, ReconnectBanner } from '../../../web/src/components';
-import { remainingQuota } from '../../../web/src/game';
-import { triggerCandyConfetti, CandyButton, CandyPanel, CandyBadge, CandyGameIcon, CandyInput, CandyModal, CandySpinner } from 'candy-ui';
+import { GuessModal, RevealModal, ReconnectBanner } from '../../../web/src/components';
+import { PlayingRoom } from '../../../web/src/PlayingRoom';
+import { WaitingRoom } from '../../../web/src/WaitingRoom';
+import { triggerCandyConfetti, CandyButton, CandyPanel, CandyInput, CandyModal } from 'candy-ui';
 
 export default function RoomPage() {
   const params = useParams();
-  const router = useRouter();
+  const router = useGameRouter();
   const code = (typeof params.code === 'string' ? params.code : '').toUpperCase();
   const game = useGame();
   const room = game.room?.code === code ? game.room : null;
@@ -19,6 +22,7 @@ export default function RoomPage() {
   const [playerKey, setPlayerKey] = useState('');
   const [name, setName] = useState('');
   const [nameOpen, setNameOpen] = useState(false);
+  usePageLoading(!room && !game.joinError && !nameOpen, '正在加入房间...');
   const autoStarted = useRef<string | null>(null);
   useEffect(() => {
     if (!code) return;
@@ -59,34 +63,23 @@ export default function RoomPage() {
     }}>加入房间</CandyButton></div>
   </CandyModal>;
   if (!room) return <main>
-    <CandyPanel theme="frosted"><h2>房间 {code}</h2><div className="loading-state" role="status"><CandySpinner />正在加入房间...</div>
+    <CandyPanel theme="frosted"><h2>房间 {code}</h2>{game.joinError
+      ? <p role="alert">{game.joinError}</p>
+      : <p>正在准备房间…</p>}
       <CandyButton variant="ghost" appearance="outline" onClick={onLeave}>返回首页</CandyButton>
     </CandyPanel>{nameModal}
   </main>;
   const me = room.players.find(p => p.key === playerKey);
   const disabled = !game.joined || game.status !== 'connected' || !me;
-  const playing = room.phase === 'playing';
-  return <main>
+  if (room.phase === 'lobby') return <main className="waiting-main">
     <ReconnectBanner status={game.status} />
-    <CandyPanel theme="frosted" className="room-topbar">
-      <div><div className="actions-row"><CandyBadge variant="blue">第 {room.round} 局</CandyBadge><CandyBadge variant={playing ? 'green' : 'yellow'}>{{ lobby: '等待开局', playing: '推理中', revealed: '已揭晓' }[room.phase]}</CandyBadge></div><h2>{room.puzzle?.title ?? '等待开局'}</h2></div>
-      <CandyButton variant="ghost" appearance="outline" rightIcon={<CandyGameIcon name="arrow-right" size={20} />} onClick={onLeave}>离开房间</CandyButton>
-    </CandyPanel>
-    <div className="actions-row room-invite"><span>房间码：</span><CandyBadge variant="blue">{room.code}</CandyBadge><CandyButton variant="blue" size="xs" leftIcon={<CandyGameIcon name="copy" size={18} />} onClick={copyInvite}>复制邀请链接</CandyButton></div>
-    <div className="room-grid">
-      <section className="room-main">
-        <CandyPanel theme="frosted"><h3>本题汤面</h3>{room.puzzle ? <ContentWarning warning={room.puzzle.nsfl} id={room.puzzle.id}><h4>{room.puzzle.title}</h4><p className="story-body">{room.puzzle.surface}</p></ContentWarning> : <p>房主可在控制面板抽题开局。</p>}</CandyPanel>
-        <QuestionLog room={room} />
-        <AskBox remaining={remainingQuota(room, playerKey)} disabled={disabled || !playing || !!me?.pending} hints={room.hints} totalHints={room.hintCount} isHost={room.hostKey === playerKey}
-          canGuess={!disabled && playing && !me?.pending && (me?.guesses ?? 0) < room.settings.maxGuesses} remainingGuesses={Math.max(0, room.settings.maxGuesses - (me?.guesses ?? 0))} progress={room.progress}
-          onAsk={text => actions.ask(text).catch(err => notify(err.message))} onGuess={() => setGuessOpen(true)} onHint={() => actions.hint().catch(err => notify(err.message))} />
-        {room.phase === 'revealed' && <CandyButton variant="yellow" onClick={() => setRevealOpen(true)} leftIcon={<CandyGameIcon name="book" size={22} />}>查看汤底与评价</CandyButton>}
-      </section>
-      <aside className="room-sidebar">
-        <PlayerList room={room} selfKey={playerKey} disabled={disabled} onKick={key => actions.kick(key).catch(err => notify(err.message))} />
-        <HostPanel room={room} disabled={disabled || room.hostKey !== playerKey} onSettings={settings => actions.settings(settings).catch(err => notify(err.message))} onStart={id => actions.start(id).catch(err => notify(err.message))} onHint={() => actions.hint().catch(err => notify(err.message))} onReveal={() => actions.reveal().catch(err => notify(err.message))} />
-      </aside>
-    </div>
+    <WaitingRoom room={room} selfKey={playerKey} disabled={disabled} onLeave={onLeave} onInvite={copyInvite}
+      onSettings={actions.settings} onStart={actions.start} onKick={key => actions.kick(key).catch(err => notify(err.message))} />
+    {nameModal}
+  </main>;
+  return <main className="playing-main">
+    <ReconnectBanner status={game.status} />
+    <PlayingRoom room={room} selfKey={playerKey} disabled={disabled} onLeave={onLeave} onInvite={copyInvite} onGuess={() => setGuessOpen(true)} onReveal={() => setRevealOpen(true)} />
     {guessOpen && <GuessModal disabled={disabled} remaining={Math.max(0, room.settings.maxGuesses - (me?.guesses ?? 0))} onClose={() => setGuessOpen(false)} onGuess={text => actions.guess(text).catch(err => notify(err.message))} />}
     {room.phase === 'revealed' && room.reveal && <RevealModal opened={revealOpen} onClose={() => setRevealOpen(false)} reveal={room.reveal} disabled={disabled} onRate={(score, funny) => actions.rate(score, funny).catch(err => notify(err.message))} />}
     {nameModal}

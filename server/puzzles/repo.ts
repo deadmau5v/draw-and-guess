@@ -24,7 +24,7 @@ export class PuzzleRepo {
   return {id:String(r.id),title:String(r.title),surfacePreview:Array.from(String(r.surface)).slice(0,60).join(''),difficulty:r.difficulty===null?null:Number(r.difficulty),tags:JSON.parse(String(r.tags)),nsfl:!!r.nsfl,hintCount:JSON.parse(String(r.hints)).length, goodRate, tier:goodRate===null?'none':goodRate>=0.7?'high':goodRate>=0.4?'mid':'low',funny:Number(r.funny),ratings,plays:Number(r.plays),solves:Number(r.solves),sourceKey:source.key};
  }
  list(q: PuzzleListQuery={}): PuzzleSummary[] {
-  let rows=this.rows().filter(r=>(!q.excludeNsfl || !r.nsfl) && (!q.q || `${r.title} ${r.surface}`.toLowerCase().includes(q.q.toLowerCase())));
+  let rows=this.rows().filter(r=>(!q.excludeNsfl || !r.nsfl) && (!q.tag || (JSON.parse(String(r.tags)) as string[]).includes(q.tag)) && (!q.q || `${r.title} ${r.surface}`.toLowerCase().includes(q.q.toLowerCase())));
   if(q.sort==='new') rows.sort((a,b)=>Number(b.created_at)-Number(a.created_at));
   if(q.sort==='hot') rows.sort((a,b)=>Number(b.plays)-Number(a.plays));
   let summaries=rows.map(r=>this.summary(r));

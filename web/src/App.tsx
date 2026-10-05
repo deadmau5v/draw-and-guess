@@ -4,10 +4,11 @@ import { api } from './api';
 import { actions, joinRoom, leaveRoom } from './socket';
 import { clearToast, getSnapshot, notify, useGame } from './store';
 import { remainingQuota } from './game';
+import { usePageLoading } from './loading';
 import {
   CandyAlert, CandyBadge, CandyButton, CandyCard, CandyCheckbox, CandyEmptyState,
   CandyGameIcon, CandyIconButton, CandyInput, CandyList, CandyListItem,
-  CandyModal, CandyNavigation, CandyPanel, CandySelect, CandySpinner,
+  CandyModal, CandyNavigation, CandyPanel, CandySelect,
   CandyTab, CandyTabList, CandyTabs, useCandy, candySound, triggerCandyConfetti,
 } from 'candy-ui';
 import {
@@ -185,6 +186,7 @@ export function Library({ onChoose, busy }: { onChoose: (id: string) => void; bu
   const [excludeNsfl, setExcludeNsfl] = useState(true);
   const [puzzles, setPuzzles] = useState<PuzzleSummary[]>([]);
   const [loading, setLoading] = useState(false);
+  usePageLoading(loading || busy, '正在加载题库…');
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -230,7 +232,6 @@ export function Library({ onChoose, busy }: { onChoose: (id: string) => void; bu
     {error && <CandyAlert tone="error" title={error}
       icon={<CandyGameIcon name="info" />}
       action={<CandyButton variant="red" size="sm" onClick={() => setRefresh(v => v + 1)}>重试</CandyButton>} />}
-    {loading && offset === 0 && <CandySpinner label="正在备汤..." />}
     <section className="puzzles-grid" aria-busy={busy || loading}>
       {puzzles.map(puzzle => <PuzzleCard key={puzzle.id} puzzle={puzzle} onChoose={id => { if (!busy) onChoose(id); }} />)}
     </section>
@@ -247,6 +248,7 @@ export function Room({ code, name, playerKey, onName: _onName, onLeave }: {
   const [guessOpen, setGuessOpen] = useState(false);
   const [revealModalOpen, setRevealModalOpen] = useState(false);
   const { room, joined, status } = game;
+  usePageLoading(!room && !game.joinError && !!name.trim(), '正在加入房间...');
   const run = async <T,>(action: () => Promise<T>): Promise<T | undefined> => {
     try { return await action(); }
     catch (error) { notify(error instanceof Error ? error.message : '操作失败'); return undefined; }
@@ -261,7 +263,7 @@ export function Room({ code, name, playerKey, onName: _onName, onLeave }: {
     if (room.guesses.some(g => g.outcome === '破解成功') || (room.phase === 'revealed' && room.reveal?.reason === 'solved')) triggerCandyConfetti();
   }, [room?.phase, room?.guesses.length]);
   if (!room) return <main><CandyPanel theme="frosted">
-    <h2>进入房间 {code}</h2><CandySpinner label="连接中..." />
+    <h2>进入房间 {code}</h2>{game.joinError ? <p role="alert">{game.joinError}</p> : <p>正在准备房间…</p>}
     <CandyButton variant="gray" size="sm" onClick={onLeave}>返回首页</CandyButton>
   </CandyPanel></main>;
 
@@ -298,7 +300,7 @@ export function Room({ code, name, playerKey, onName: _onName, onLeave }: {
           </ContentWarning> : <p>房主可在控制面板抽题开局。</p>}
         </CandyPanel>
         <QuestionLog room={room} />
-        <AskBox remaining={remaining} disabled={disabled || !playing || !!me?.pending || notMyTurn}
+        <AskBox remaining={remaining} disabled={disabled || !playing || notMyTurn} pending={!!me?.pending}
           turn={room.settings.turnMode === 'turns' && playing ? `轮到 ${turnName} 提问` : undefined}
           hints={room.hints} totalHints={room.hintCount} isHost={room.hostKey === playerKey}
           canGuess={!disabled && playing && !me?.pending && (me?.guesses ?? 0) < room.settings.maxGuesses}

@@ -6,7 +6,8 @@ import { CandyGameIcon } from 'candy-ui';
 
 const files = [
   'app/NavHeader.tsx', 'app/page.tsx', 'app/library/page.tsx', 'app/room/[code]/page.tsx',
-  'web/src/App.tsx', 'web/src/components.tsx', 'web/src/icons/GameIcons.tsx',
+  'web/src/App.tsx', 'web/src/components.tsx', 'web/src/icons/GameIcons.tsx', 'web/src/WaitingRoom.tsx', 'web/src/PlayingRoom.tsx',
+  'web/src/GameExperience.tsx',
 ];
 it('所有页面与共享控件使用 CandyUI，不再拼装原生控件或 PNG 操作图标', () => {
   for (const path of files) {

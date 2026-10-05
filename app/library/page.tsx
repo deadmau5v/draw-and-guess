@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGameRouter } from '../gameNavigation';
 import type { PuzzleSummary, SortKey } from '@shared/protocol';
 import { api } from '../../web/src/api';
 import { notify } from '../../web/src/store';
-import { CandyButton, CandyCheckbox, CandyInput, CandyPanel, CandyModal, CandySpinner, CandyEmptyState, CandyGameIcon } from 'candy-ui';
+import { CandyButton, CandyCheckbox, CandyInput, CandyPanel, CandyModal, CandyEmptyState, CandyGameIcon } from 'candy-ui';
+import { usePageLoading } from '../../web/src/loading';
 import { PuzzleCard } from '../../web/src/components';
 
 export default function LibraryPage() {
-  const router = useRouter();
+  const router = useGameRouter();
   const [sort, setSort] = useState<SortKey>('new');
   const [q, setQ] = useState('');
   const [excludeNsfl, setExcludeNsfl] = useState(true);
@@ -20,6 +21,7 @@ export default function LibraryPage() {
   const [pendingPuzzle, setPendingPuzzle] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  usePageLoading(loading || busy, '正在加载题库…');
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -69,7 +71,6 @@ export default function LibraryPage() {
         <CandyCheckbox checked={excludeNsfl} label="排除重口" color="blue" onChange={checked => { setExcludeNsfl(checked); setOffset(0); }} />
       </div>
     </CandyPanel>
-    {loading && <div role="status" className="loading-state"><CandySpinner />正在加载题库...</div>}
     {!loading && puzzles.length === 0 && <CandyEmptyState title="未找到题目" description="试试其他关键词或调整筛选条件。" icon={<CandyGameIcon name="search" size={40} />} />}
     <section className="puzzles-grid">{puzzles.map(puzzle => <PuzzleCard key={puzzle.id} puzzle={puzzle} onChoose={onChoose} />)}</section>
     {hasMore && <CandyButton className="load-more" variant="blue" loading={loading} onClick={() => setOffset(prev => prev + 60)}>加载更多</CandyButton>}
@@ -79,3 +80,4 @@ export default function LibraryPage() {
     </CandyModal>}
   </main>;
 }
+

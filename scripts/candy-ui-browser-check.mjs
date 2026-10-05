@@ -32,7 +32,7 @@ try {
   await page.getByRole('button', { name: '侦探柯基', exact: true }).click();
   await page.getByLabel('创建房间 →', { exact: true }).click();
   await page.waitForURL(/\/room\/[A-Z0-9]{6}/);
-  await page.getByText('房主控制', { exact: true }).waitFor();
+  await page.getByText('房间设置', { exact: true }).waitFor();
   await page.screenshot({ path: 'artifacts/candy-ui/room-desktop.png', fullPage: true });
   await page.getByRole('button', { name: '离开房间', exact: true }).click();
   await page.getByRole('button', { name: '题库', exact: true }).click();

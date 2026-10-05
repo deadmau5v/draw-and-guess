@@ -130,3 +130,5 @@ getRoom(code:string): Result<RoomState> // 隔离快照，仅服务端使用，�
 - `RoomState` / `RoomOptions` / `Result` 在 roomManager.ts 和 types.ts 均导出。
 - `scripts/jev-smoke.ts` 直接执行只在有 key 时触网；`runSmoke(config,db,fetchImpl?,print?)` 供离线测试，三问加一次还原；所有 Jev 测试 mock fetch，无外网调用。
 
+- 房间大厅新增共享契约 `RoomLobbySummary` 与 `GET /api/rooms`：仅返回有在线玩家、未满且尚未揭晓的房间，最多 100 条；公开字段仅为房间码、房主昵称、人数、上限与阶段，不包含玩家身份、题目、提示或汤底。首页“加入游戏”按房间码加入，“房间大厅”可刷新列表并分页加入。
+- `PuzzleListQuery.tag` 是可选的完整标签筛选，与难度和重口过滤组合使用。等待开局页的主题采用种子题库现有标签，房主选题后通过既有 `game:start` 传题目 ID；主题选择不修改共享房间设置，也不会公开汤底。

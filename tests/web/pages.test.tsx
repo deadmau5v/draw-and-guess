@@ -1,10 +1,12 @@
 ﻿// @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 const fake = vi.hoisted(() => ({ createRoom: vi.fn().mockResolvedValue({ code: 'ABC234' }), puzzles: vi.fn().mockResolvedValue([]), health: vi.fn().mockResolvedValue({ puzzles: 80, judgeConfigured: true }), joinRoom: vi.fn(), leaveRoom: vi.fn(), start: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../../web/src/api', () => ({ api: fake }));
 vi.mock('../../web/src/socket', () => ({ joinRoom: fake.joinRoom, leaveRoom: fake.leaveRoom, actions: { start: fake.start } }));
+vi.mock('next/navigation', () => ({ useParams: () => ({ code: 'ABC234' }), useRouter: () => ({ push: vi.fn() }) }));
+import RoomPage from '../../app/room/[code]/page';
 import App, { Home, Library, Room } from '../../web/src/App';
 import { GameProvider } from '../../web/src/theme';
 import { updateState } from '../../web/src/store';
@@ -41,7 +43,17 @@ beforeAll(() => {
 
 const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: GameProvider });
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear(); location.hash = '/'; updateState({ room: null, joined: false, status: 'offline', message: null }); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); localStorage.clear(); location.hash = '/'; updateState({ room: null, joined: false, status: 'offline', message: null, joinError: null }); });
+it('Next 房间加入失败后显示错误并停止加载，仍可返回首页', async () => {
+  localStorage.setItem('turtle:name', '小林');
+  render(<RoomPage />);
+  expect(screen.getByText('正在加入房间...')).toBeTruthy();
+  act(() => updateState({ room: null, joined: false, status: 'connected', joinError: '房间不存在' }));
+  expect(screen.getByRole('alert').textContent).toBe('房间不存在');
+  await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: '返回首页' }));
+  expect(fake.leaveRoom).toHaveBeenCalled();
+});
 it('首页说明玩法，保存昵称并创建房间', async () => {
   render(<App />);
   expect(screen.getByText(/汤面 → 提问 → 是\/不是\/不相关 → 每人8问 → 还原真相/)).toBeTruthy();

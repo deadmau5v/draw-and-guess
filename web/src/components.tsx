@@ -8,6 +8,7 @@ import {
 import type { CandyColor } from 'candy-ui';
 import type { ProgressView, PuzzleSummary, RevealView, RoomView, Settings, Verdict } from '@shared/protocol';
 import { verdictTone } from './game';
+import { resolveAvatar } from './avatars';
 
 const AVATAR_CHARACTERS = ['bear', 'cat', 'fox', 'rabbit', 'frog', 'smile', 'crown', 'user'] as const;
 export function getPlayerCharacter(key: string, name: string): (typeof AVATAR_CHARACTERS)[number] {
@@ -53,11 +54,12 @@ export function ContentWarning({ warning, id, children }: { warning: boolean; id
 }
 
 export function AskBox({
-  remaining, disabled, turn, hints, totalHints, isHost, canGuess,
+  remaining, disabled, pending = false, turn, hints, totalHints, isHost, canGuess,
   remainingGuesses, progress, flashVerdict, onAsk, onGuess, onHint,
 }: {
   remaining: number;
   disabled: boolean;
+  pending?: boolean;
   turn?: string;
   hints?: string[];
   totalHints?: number;
@@ -71,10 +73,12 @@ export function AskBox({
   onHint?: () => void;
 }) {
   const [text, setText] = useState('');
+  const questionInput = useRef<HTMLTextAreaElement>(null);
   const submit = () => {
-    if (disabled || remaining <= 0 || !text.trim()) return;
+    if (disabled || pending || remaining <= 0 || !text.trim()) return;
     onAsk(text.trim());
     setText('');
+    questionInput.current?.focus({ preventScroll: true });
   };
 
   return (
@@ -121,16 +125,17 @@ export function AskBox({
       )}
       {turn && <CandyAlert tone="info" style={{ marginBlock: 8 }}>{turn}</CandyAlert>}
       <CandyTextarea
+        ref={questionInput}
         aria-label="你的问题"
         maxLength={120}
         rows={2}
         value={text}
         showCount
-        disabled={disabled || remaining <= 0}
+        disabled={disabled}
         placeholder="向 AI 提问是非题（例如：他认识这个人吗？死因与水有关吗？）"
         onChange={e => setText(e.target.value)}
         onKeyDown={e => {
-          if (e.key === 'Enter' && !e.shiftKey) {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             submit();
           }
@@ -143,7 +148,7 @@ export function AskBox({
           size="sm"
           aria-label="提问 →"
           rightIcon={<CandyGameIcon name="arrow-right" size={16} />}
-          disabled={disabled || remaining <= 0 || !text.trim()}
+          disabled={disabled || pending || remaining <= 0 || !text.trim()}
           onClick={submit}
         >
           提问
@@ -182,7 +187,7 @@ export function QuestionLog({ room }: { room: RoomView }) {
                 <CandyCard role="article" style={{ width: '100%' }}
                   title={(
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <CandyAvatar character={getPlayerCharacter(event.id, event.playerName)} size="xs" />
+                      <CandyAvatar src={resolveAvatar(event.avatar ?? room.players.find(p => p.key === event.playerKey)?.avatar)} alt={event.playerName} size="xs" />
                       <strong>{event.playerName}</strong>
                       <span> · {event.kind}</span>
                     </span>
@@ -311,23 +316,24 @@ export function PuzzleCard({ puzzle, onChoose }: { puzzle: PuzzleSummary; onChoo
   );
 }
 
-export function PlayerList({ room, selfKey, disabled, onKick }: {
+export function PlayerList({ room, selfKey, disabled, onKick, compact = false }: {
   room: RoomView;
   selfKey: string;
   disabled: boolean;
   onKick: (key: string) => void;
+  compact?: boolean;
 }) {
   const host = room.hostKey === selfKey;
   return (
-    <CandyPanel theme="frosted">
-      <h4>同桌玩家 ({room.players.length}/8)</h4>
+    <CandyPanel theme="frosted" style={compact ? { padding: 12, fontSize: 12 } : undefined}>
+      <h4 style={compact ? { fontSize: 14, margin: '0 0 10px' } : undefined}>同桌玩家 ({room.players.length}/8)</h4>
       <CandyList variant="plain" divided size="sm">
         {room.players.map(player => (
           <CandyListItem key={player.key} highlight={player.key === selfKey}
-            leading={<CandyAvatar character={getPlayerCharacter(player.key, player.name)} size="xs" status={player.online ? 'online' : 'offline'} />}
+            leading={<CandyAvatar src={resolveAvatar(player.avatar)} alt={player.name} size="xs" status={player.online ? 'online' : 'offline'} />}
             title={(
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <strong>{player.name}</strong>
+                <strong style={compact ? { fontSize: 13 } : undefined}>{player.name}</strong>
                 {player.isHost && <CandyStatusBadge status="host" label="[房主]" size="sm" />}
                 {player.key === selfKey && <CandyBadge variant="gray" size="sm">(你)</CandyBadge>}
               </span>
@@ -406,3 +412,4 @@ export function ReconnectBanner({ status }: { status: 'offline' | 'connecting' |
     </CandyAlert>
   );
 }
+

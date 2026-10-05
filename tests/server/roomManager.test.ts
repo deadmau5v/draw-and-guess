@@ -4,6 +4,12 @@ import type { Ack, PuzzlePublic } from '../../shared/protocol.js';
 function value<T>(r:Ack<T>):T {if(!r.ok) throw new Error(r.msg);return r.value;}
 const puzzle:PuzzlePublic={id:'p',title:'题',surface:'汤面',difficulty:null,tags:[],nsfl:false,hintCount:1,goodRate:null,tier:'none',funny:0,ratings:0,plays:0,solves:0,sourceKey:'test',source:{key:'test',repo:'r',url:'u',license:'MIT'}};
 function setup(opts:ConstructorParameters<typeof RoomManager>[0]={}) {const m=new RoomManager(opts);const code=value(m.createRoom('甲','a')).code;value(m.join(code,'甲','a','sa'));value(m.join(code,'甲','b','sb'));return {m,code};}
+it('头像仅使用项目素材，旧客户端重连保持原头像',()=>{
+ const m=new RoomManager();const avatar='/assets/avatars/player-anime.png';
+ const code=value(m.createRoom('甲','a',avatar)).code;
+ expect(value(m.join(code,'甲','a','sa')).players[0].avatar).toBe(avatar);
+ expect(value(m.join(code,'甲','a','sb','https://example.com/avatar.png')).players[0].avatar).toBe('/assets/avatars/player-panda.png');
+});
 it('房间码六位、同名后缀和第九人拒绝',()=>{const {m,code}=setup();expect(code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/);expect(value(m.toPublicView(code)).players[1].name).toBe('甲(2)');for(let i=2;i<8;i++) value(m.join(code,'玩家',String(i),'s'+i));expect(m.join(code,'九','nine','s9')).toMatchObject({ok:false,code:'ROOM_FULL'});});
 it('非房主不能开始、设置仅大厅可用，开局重置公开状态',()=>{const {m,code}=setup();expect(m.start(code,'b',puzzle.id,1)).toMatchObject({ok:false,code:'NOT_HOST'});value(m.updateSettings(code,'a',{quota:5,turnMode:'turns'}));value(m.start(code,'a',puzzle.id,1));expect(value(m.toPublicView(code))).toMatchObject({phase:'playing',puzzle:null,hintCount:1,turnKey:'a',round:1});expect(m.updateSettings(code,'a',{quota:3})).toMatchObject({ok:false,code:'BAD_PHASE'});expect(m.start(code,'a',puzzle.id,1)).toMatchObject({ok:false,code:'BAD_PHASE'});expect(m.updateSettings(code,'a',{quota:0})).toMatchObject({ok:false});});
 it('perPlayer 第九问拒绝，其他人仍可问',()=>{const {m,code}=setup();value(m.start(code,'a',puzzle.id));for(let i=0;i<8;i++){const q=value(m.beginAsk(code,'a','问'));value(m.applyVerdict(code,q.id,'是',0.9));} expect(m.beginAsk(code,'a','九')).toMatchObject({ok:false,code:'QUOTA_EXCEEDED'});expect(m.beginAsk(code,'b','问')).toMatchObject({ok:true});});

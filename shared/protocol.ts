@@ -3,6 +3,14 @@
 export type Verdict = '是' | '不是' | '不相关' | '不确定' | '判定中' | '出错';
 export type Outcome = '破解成功' | '接近真相' | '还没猜对' | '不确定' | '判定中' | '出错';
 export type Phase = 'lobby' | 'playing' | 'revealed';
+/** 房间大厅仅展示加入所需摘要，不包含题目、提示或玩家身份。 */
+export interface RoomLobbySummary {
+  code: string;
+  hostName: string;
+  players: number;
+  maxPlayers: number;
+  phase: 'lobby' | 'playing';
+}
 export type QuotaMode = 'perPlayer' | 'shared' | 'unlimited';
 export type TurnMode = 'free' | 'turns';
 export type RevealReason = 'solved' | 'host' | 'exhausted';
@@ -60,6 +68,7 @@ export interface PuzzleSecret extends PuzzlePublic {
 }
 
 export interface PuzzleListQuery {
+  tag?: string;
   sort?: SortKey;
   q?: string;
   excludeNsfl?: boolean;
@@ -88,6 +97,7 @@ export const LIMITS = { maxPlayers: 8, questionMax: 120, guessMax: 400, nameMax:
 export interface PlayerView {
   key: string; // playerKey；仅用于房内识别/踢人
   name: string;
+  avatar?: string;
   online: boolean;
   isHost: boolean;
   asked: number;
@@ -99,6 +109,7 @@ export interface QAView {
   id: string;
   playerKey: string;
   playerName: string;
+  avatar?: string;
   text: string;
   verdict: Verdict;
   at: number;
@@ -108,6 +119,7 @@ export interface GuessView {
   id: string;
   playerKey: string;
   playerName: string;
+  avatar?: string;
   text: string;
   outcome: Outcome;
   at: number;
@@ -144,7 +156,7 @@ export interface RoomView {
 }
 
 export interface ClientToServer {
-  'room:join': (p: { code: string; name: string; playerKey: string }, ack: (r: Ack<RoomView>) => void) => void;
+  'room:join': (p: JoinRoomRequest, ack: (r: Ack<RoomView>) => void) => void;
   'room:leave': (ack?: (r: Ack) => void) => void;
   'room:settings': (p: Partial<Settings>, ack: (r: Ack) => void) => void;
   'room:kick': (p: { playerKey: string }, ack: (r: Ack) => void) => void;
@@ -165,5 +177,6 @@ export interface ServerToClient {
 
 /** HTTP */
 export interface HealthResponse { ok: true; puzzles: number; model: string; cost: number; judgeConfigured: boolean }
-export interface CreateRoomRequest { name: string; playerKey: string }
+export interface CreateRoomRequest { name: string; playerKey: string; avatar?: string }
+export interface JoinRoomRequest extends CreateRoomRequest { code: string }
 export interface CreateRoomResponse { code: string }

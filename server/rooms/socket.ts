@@ -57,11 +57,11 @@ export function attachSockets(io:Server<ClientToServer,ServerToClient>,deps:AppD
   }
   socket.on('room:join',(p,ack)=>reply(ack,()=>{
    const parsed=identitySchema.extend({code:z.string().regex(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/)}).safeParse(p);if(!parsed.success) return invalid;
-   const {code,name,playerKey}=parsed.data;
+   const {code,name,playerKey,avatar}=parsed.data;
    if(identity&&(identity.code!==code||identity.key!==playerKey)) return invalid;
    const previous=rooms.getRoom(code);
    const previousId=previous.ok?previous.value.players.find(p=>p.key===playerKey)?.socketId:null;
-   const result=rooms.join(code,name,playerKey,socket.id);if(!result.ok) return result;
+   const result=rooms.join(code,name,playerKey,socket.id,avatar);if(!result.ok) return result;
    if(previousId&&previousId!==socket.id) void io.sockets.sockets.get(previousId)?.leave(code);
    identity={code,key:playerKey};void socket.join(code);broadcast(code);return publicView(code);
   }));

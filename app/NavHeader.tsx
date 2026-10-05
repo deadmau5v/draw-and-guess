@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useGameRouter } from './gameNavigation';
 import {
   useCandy, CandyAvatar, CandyButton, CandyIconButton, CandyModal,
   CandyGameIcon, CandyEmptyState, CandyList, CandyListItem, CandyBadge,
 } from 'candy-ui';
 import { notify } from '../web/src/store';
+import { readPlayerAvatar } from '../web/src/avatars';
 
 export function NavHeader() {
   const pathname = usePathname();
-  const router = useRouter();
+  const router = useGameRouter();
   const { soundEnabled, setSoundEnabled } = useCandy();
   const [name, setName] = useState('推理小海龟');
   const [avatarSrc, setAvatarSrc] = useState('/assets/user-smile.png');
@@ -20,8 +22,8 @@ export function NavHeader() {
     const syncProfile = () => {
       try {
         setName(localStorage.getItem('turtle:name') || '推理小海龟');
-        const saved = localStorage.getItem('turtle:avatar');
-        setAvatarSrc(saved?.startsWith('/assets/') ? saved : saved ? `/assets/avatars/player-${saved}.png` : '/assets/user-smile.png');
+        
+        setAvatarSrc(readPlayerAvatar());
       } catch {}
     };
     syncProfile();
@@ -33,19 +35,19 @@ export function NavHeader() {
     };
   }, []);
   return <>
-    <header className="game-top-header">
+    <header className="game-top-header" style={{ '--candy-text': '#ffffff', '--candy-surface-alt': 'transparent', '--candy-track': 'transparent' } as React.CSSProperties}>
       <div className="game-header-inner">
         <nav className="header-nav-group" aria-label="主导航">
-          <CandyButton variant={pathname === '/' ? 'yellow' : 'cream'} size="sm" shape="pill" aria-current={pathname === '/' ? 'page' : undefined} leftIcon={<CandyGameIcon name="house" size={22} />} onClick={() => router.push('/')}>首页</CandyButton>
-          <CandyButton variant={pathname === '/library' ? 'yellow' : 'cream'} size="sm" shape="pill" aria-current={pathname === '/library' ? 'page' : undefined} leftIcon={<CandyGameIcon name="book" size={22} />} onClick={() => router.push('/library')}>题库</CandyButton>
-          <CandyButton variant="cream" size="sm" shape="pill" leftIcon={<CandyGameIcon name="trophy" size={22} />} onClick={() => setLeaderboardOpen(true)}>排行榜</CandyButton>
-          <CandyButton variant="cream" size="sm" shape="pill" leftIcon={<CandyGameIcon name="book" size={22} />} onClick={() => setGuideOpen(true)}>新手指南</CandyButton>
+          <CandyButton variant="ghost" size="sm" aria-current={pathname === '/' ? 'page' : undefined} leftIcon={<CandyGameIcon name="house" size={24} />} onClick={() => router.push('/')}><span className={pathname === '/' ? 'nav-active-label' : undefined}>首页</span></CandyButton>
+          <CandyButton variant="ghost" size="sm" aria-current={pathname === '/library' ? 'page' : undefined} leftIcon={<CandyGameIcon name="book" size={24} />} onClick={() => router.push('/library')}><span className={pathname === '/library' ? 'nav-active-label' : undefined}>题库</span></CandyButton>
+          <CandyButton variant="ghost" size="sm" leftIcon={<CandyGameIcon name="trophy" size={24} />} onClick={() => setLeaderboardOpen(true)}>排行榜</CandyButton>
+          <CandyButton variant="ghost" size="sm" leftIcon={<CandyGameIcon name="book" size={24} />} onClick={() => setGuideOpen(true)}>新手指南</CandyButton>
         </nav>
         <div className="header-center-logo"><img src="/assets/banner-logo.png" alt="海龟汤推理局" className="header-banner-img" /></div>
         <div className="header-right-group">
-          <CandyIconButton variant="yellow" size="sm" shape="circle" aria-label="系统通知" icon={<CandyGameIcon name="notification" size={22} />} onClick={() => notify('欢迎来到海龟汤推理局！邀请好友一起推理吧。')} />
-          <CandyButton className="header-profile" variant="cream" size="md" shape="pill" onClick={() => setLeaderboardOpen(true)} leftIcon={<CandyAvatar src={avatarSrc} size="sm" />} rightIcon={<CandyGameIcon name="arrow-down" size={16} />}><span className="header-profile-name">{name}</span></CandyButton>
-          <CandyIconButton variant="cream" size="sm" shape="circle" aria-label={soundEnabled ? '关闭音效' : '开启音效'} aria-pressed={soundEnabled} icon={<CandyGameIcon name={soundEnabled ? 'volume' : 'cross'} size={22} />} onClick={() => setSoundEnabled(!soundEnabled)} />
+          <CandyIconButton variant="ghost" size="sm" shape="circle" aria-label="系统通知" icon={<CandyGameIcon name="notification" size={24} />} onClick={() => notify('欢迎来到海龟汤推理局！邀请好友一起推理吧。')} />
+          <CandyButton className="header-profile" variant="ghost" size="md" shape="pill" onClick={() => setLeaderboardOpen(true)} leftIcon={<CandyAvatar src={avatarSrc} size="sm" />} rightIcon={<CandyGameIcon name="arrow-down" size={16} />}><span className="header-profile-name">{name}</span></CandyButton>
+          <CandyIconButton variant="ghost" size="sm" shape="circle" aria-label={soundEnabled ? '关闭音效' : '开启音效'} aria-pressed={soundEnabled} icon={<CandyGameIcon name={soundEnabled ? 'volume' : 'cross'} size={24} />} onClick={() => setSoundEnabled(!soundEnabled)} />
         </div>
       </div>
     </header>
@@ -62,3 +64,5 @@ export function NavHeader() {
     </CandyModal>}
   </>;
 }
+
+

@@ -3,8 +3,8 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
-const listSchema=z.object({sort:z.enum(['good','mid','low','hot','new']).optional(),q:z.string().max(200).optional(),nsfl:z.enum(['0','1']).default('0'),limit:z.coerce.number().int().min(1).max(200).default(60),offset:z.coerce.number().int().min(0).default(0)});
-export const identitySchema=z.object({name:z.string().trim().min(1).max(16),playerKey:z.string().min(1).max(128)}).strict();
+const listSchema=z.object({sort:z.enum(['good','mid','low','hot','new']).optional(),q:z.string().max(200).optional(),tag:z.string().max(100).optional(),nsfl:z.enum(['0','1']).default('0'),limit:z.coerce.number().int().min(1).max(200).default(60),offset:z.coerce.number().int().min(0).default(0)});
+export const identitySchema=z.object({name:z.string().trim().min(1).max(16),playerKey:z.string().min(1).max(128),avatar:z.string().max(512).optional()}).strict();
 export function createRoutes(deps:AppDeps) {
  const router=express.Router();
  router.get('/api/health',(_req,res)=>res.json({ok:true,puzzles:deps.repo.count(),model:deps.config.model,cost:deps.judge.totalCost(),judgeConfigured:deps.config.judgeConfigured}));
@@ -21,10 +21,11 @@ export function createRoutes(deps:AppDeps) {
   if(!puzzle) {res.status(404).json({code:'NOT_FOUND',msg:'题目不存在'});return;}
   res.json(puzzle);
  });
+ router.get('/api/rooms',(_req,res)=>res.json(deps.rooms.listLobby()));
  router.post('/api/rooms',(req,res)=>{
   const parsed=identitySchema.safeParse(req.body);
   if(!parsed.success) {res.status(400).json({code:'INVALID',msg:'昵称或身份无效'});return;}
-  const result=deps.rooms.createRoom(parsed.data.name,parsed.data.playerKey);
+  const result=deps.rooms.createRoom(parsed.data.name,parsed.data.playerKey,parsed.data.avatar);
   if(!result.ok) {res.status(400).json(result);return;}
   res.status(201).json(result.value);
  });

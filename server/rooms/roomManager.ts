@@ -2,6 +2,8 @@
 // 进入 revealed 只设胜者/原因，汤底由调用方查询并 setReveal。
 import { DEFAULT_SETTINGS, LIMITS, type ErrorCode, type RoomView, type Settings, type QAView, type Verdict, type GuessView, type Outcome, type RevealView, type RevealReason, type ProgressView } from '../../shared/protocol.js';
 import type { Result, RoomOptions, RoomState } from './types.js';
+import type { RoomLobbySummary } from '../../shared/protocol.js';
+import { resolveAvatar } from '../../shared/avatars.js';
 export type { Result, RoomOptions, RoomState } from './types.js';
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ok=<T>(value:T):Result<T>=>({ok:true,value});
@@ -11,15 +13,21 @@ export class RoomManager {
  private readonly now:()=>number;
  private readonly random:()=>number;
  constructor(opts:RoomOptions={}) { this.now=opts.now??Date.now;this.random=opts.random??Math.random; }
- createRoom(hostName:string,playerKey:string):Result<{code:string}> {
+ listLobby():RoomLobbySummary[] {
+  return [...this.rooms.values()].reverse().flatMap(room=> {
+   if(room.phase==='revealed'||!room.players.some(player=>player.online)||room.players.length>=LIMITS.maxPlayers) return [];
+   return [{code:room.code,hostName:room.players.find(player=>player.key===room.hostKey)?.name??'房主',players:room.players.length,maxPlayers:LIMITS.maxPlayers,phase:room.phase}];
+  }).slice(0,100);
+ }
+ createRoom(hostName:string,playerKey:string,avatar?:string):Result<{code:string}> {
   if(!hostName.trim()||Array.from(hostName.trim()).length>LIMITS.nameMax||!playerKey) return fail('INVALID','昵称或身份无效');
   let code='';let unique=false;
   for(let attempt=0;attempt<100;attempt++) {code=Array.from({length:6},()=>alphabet[Math.min(alphabet.length-1,Math.max(0,Math.floor(this.random()*alphabet.length)))]).join('');if(!this.rooms.has(code)){unique=true;break;}}
   if(!unique) return fail('INTERNAL','无法生成房间码');
-  this.rooms.set(code,{code,phase:'lobby',hostKey:playerKey,settings:{...DEFAULT_SETTINGS},players:[{key:playerKey,name:hostName.trim(),online:false,isHost:true,asked:0,guesses:0,pending:false,socketId:null,offlineAt:this.now()}],puzzleId:null,log:[],guesses:[],hintCount:0,hintsShown:0,sharedUsed:0,turnKey:null,round:0,reveal:null,playedIds:[],winner:null,revealReason:null,offlineAt:this.now(),startedAt:null,progress:{score:0,status:'迷雾重重'}});
+  this.rooms.set(code,{code,phase:'lobby',hostKey:playerKey,settings:{...DEFAULT_SETTINGS},players:[{key:playerKey,name:hostName.trim(),avatar:resolveAvatar(avatar),online:false,isHost:true,asked:0,guesses:0,pending:false,socketId:null,offlineAt:this.now()}],puzzleId:null,log:[],guesses:[],hintCount:0,hintsShown:0,sharedUsed:0,turnKey:null,round:0,reveal:null,playedIds:[],winner:null,revealReason:null,offlineAt:this.now(),startedAt:null,progress:{score:0,status:'迷雾重重'}});
   return ok({code});
  }
- join(code:string,name:string,playerKey:string,socketId:string):Result<RoomView> {
+ join(code:string,name:string,playerKey:string,socketId:string,avatar?:string):Result<RoomView> {
   const r=this.rooms.get(code);if(!r) return fail('NOT_FOUND','房间不存在');
   let p=r.players.find(p=>p.key===playerKey);
   if(!p) {
@@ -28,7 +36,7 @@ export class RoomManager {
    let unique=base,index=2;while(r.players.some(p=>p.name===unique)) unique=`${base}(${index++})`;
    p={key:playerKey,name:unique,online:true,isHost:false,asked:0,guesses:0,pending:false,socketId,offlineAt:null};r.players.push(p);
   }
-  p.online=true;p.socketId=socketId;p.offlineAt=null;r.offlineAt=null;
+  p.avatar=resolveAvatar(avatar??p.avatar);p.online=true;p.socketId=socketId;p.offlineAt=null;r.offlineAt=null;
   if(r.phase==='playing'&&r.settings.turnMode==='turns'&&r.turnKey===null) this.advance(r);
   return this.toPublicView(code);
  }
@@ -72,7 +80,7 @@ export class RoomManager {
   const clean=text.trim();if(!clean||Array.from(clean).length>LIMITS.questionMax) return fail('INVALID','提问需 1–120 字');
   if((r.settings.quotaMode==='perPlayer'&&p.asked>=r.settings.quota)||(r.settings.quotaMode==='shared'&&r.sharedUsed>=r.settings.quota)) return fail('QUOTA_EXCEEDED','提问额度用尽');
   if(r.settings.turnMode==='turns'&&r.turnKey!==key) return fail('NOT_YOUR_TURN','还未轮到你');
-  const qa:QAView={id:`q-${++this.sequence}`,playerKey:key,playerName:p.name,text:clean,verdict:'判定中',at:this.now()};
+  const qa:QAView={id:`q-${++this.sequence}`,playerKey:key,playerName:p.name,avatar:p.avatar,text:clean,verdict:'判定中',at:this.now()};
   p.asked++;if(r.settings.quotaMode==='shared') r.sharedUsed++;p.pending=true;r.log.push(qa);return ok({...qa});
  }
  applyVerdict(code:string,qaId:string,verdict:Verdict,confidence:number):Result {
@@ -103,7 +111,7 @@ export class RoomManager {
   if(p.pending) return fail('PENDING','正在判定，请稍候');
   const clean=text.trim();if(!clean||Array.from(clean).length>LIMITS.guessMax) return fail('INVALID','还原需 1–400 字');
   if(p.guesses>=r.settings.maxGuesses) return fail('QUOTA_EXCEEDED','猜测次数用尽');
-  const guess:GuessView={id:`g-${++this.sequence}`,playerKey:key,playerName:p.name,text:clean,outcome:'判定中',at:this.now()};
+  const guess:GuessView={id:`g-${++this.sequence}`,playerKey:key,playerName:p.name,avatar:p.avatar,text:clean,outcome:'判定中',at:this.now()};
   p.guesses++;p.pending=true;r.guesses.push(guess);return ok({...guess});
  }
  applyOutcome(code:string,guessId:string,outcome:Outcome):Result {
@@ -170,3 +178,4 @@ export class RoomManager {
   return ok(structuredClone({code:r.code,phase:r.phase,hostKey:r.hostKey,settings:r.settings,players:r.players.map(({socketId:_,offlineAt:__,...p})=>p),puzzle:null,log:r.log,guesses:r.guesses,hints:[],hintCount:r.hintCount,sharedUsed:r.sharedUsed,turnKey:r.turnKey,round:r.round,reveal:r.phase==='revealed'?r.reveal:null,progress:r.progress??{score:0,status:'迷雾重重'}}));
  }
 }
+

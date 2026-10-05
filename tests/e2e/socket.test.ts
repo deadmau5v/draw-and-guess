@@ -13,12 +13,32 @@ async function setup(deps=fixture()) {
  const result=deps.rooms.createRoom('甲','a');if(!result.ok) throw Error(result.msg);
  const connect=async()=>{const s:Socket<ServerToClient,ClientToServer>=io(`http://127.0.0.1:${address.port}`,{transports:['websocket'],reconnection:false});clients.push(s);await new Promise<void>(resolve=>s.once('connect',resolve));return s;};
  const a=await connect(),b=await connect();
- const join=(s:typeof a,key:string)=>new Promise<Ack<RoomView>>(resolve=>s.emit('room:join',{code:result.value.code,name:key==='a'?'甲':'乙',playerKey:key},resolve));
+ const join=(s:typeof a,key:string,avatar?:string)=>new Promise<Ack<RoomView>>(resolve=>s.emit('room:join',{code:result.value.code,name:key==='a'?'甲':'乙',playerKey:key,avatar},resolve));
  return {deps,a,b,join,connect,code:result.value.code};
 }
 function state(s:Socket<ServerToClient,ClientToServer>,predicate:(r:RoomView)=>boolean):Promise<RoomView> {
  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{s.off('room:state',onState);reject(Error('等待状态超时'));},1500);const onState=(r:RoomView)=>{if(predicate(r)){clearTimeout(timer);s.off('room:state',onState);resolve(r);}};s.on('room:state',onState);});
 }
+test('玩家真实头像广播给其他玩家，提问记录与重连保持头像且无汤底泄漏',async()=>{
+ const {a,b,join,connect}=await setup();
+ const anime='/assets/avatars/player-anime.png', smile='/assets/avatars/player-smile.png';
+ await join(a,'a',anime);
+ const broadcast=state(a,r=>r.players.some(p=>p.key==='b'&&p.avatar===smile));
+ const joined=await join(b,'b',smile);expect(joined.ok).toBe(true);
+ const view=await broadcast;
+ expect(view.players.find(p=>p.key==='a')?.avatar).toBe(anime);
+ expect(JSON.stringify(joined).includes(bottom)).toBe(false);
+ expect(JSON.stringify(view).includes(bottom)).toBe(false);
+ await new Promise<Ack>(resolve=>a.emit('game:start',{},resolve));
+ const question=state(a,r=>r.log[0]?.verdict==='是');
+ await new Promise<Ack<{id:string}>>(resolve=>b.emit('q:ask',{text:'他活着吗'},resolve));
+ const logged=await question;expect(logged.log[0].avatar).toBe(smile);
+ expect(JSON.stringify(logged).includes(bottom)).toBe(false);
+ const restored=await join(await connect(),'b');
+ if(!restored.ok) throw Error(restored.msg);
+ expect(restored.value.players.find(p=>p.key==='b')?.avatar).toBe(smile);
+ expect(JSON.stringify(restored).includes(bottom)).toBe(false);
+},5000);
 test('两人开局、提问广播、成功还原揭晓，揭晓前所有事件与 ack 均不含汤底',async()=>{
  const {a,b,join,deps}=await setup();
  const payloads:unknown[]=[];

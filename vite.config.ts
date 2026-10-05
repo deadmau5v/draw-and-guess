@@ -7,6 +7,7 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: 'web',
+  publicDir: path.resolve(rootDir, 'public'),
   plugins: [react()],
   resolve: { alias: { '@shared': path.resolve(rootDir, 'shared') } },
   server: {

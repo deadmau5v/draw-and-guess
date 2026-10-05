@@ -58,10 +58,11 @@ describe('房间交互', () => {
     expect(screen.getByRole('button', { name: '提问 →' }).hasAttribute('disabled')).toBe(true);
   });
   it('问答与猜测按时间穿插并标记判定颜色', () => {
-    const room = { log: [{ id: 'q', at: 2, playerName: '小林', text: '问题', verdict: '是' }], guesses: [{ id: 'g', at: 1, playerName: '阿夏', text: '还原', outcome: '接近真相' }] } as RoomView;
+    const room = { players: [], log: [{ id: 'q', at: 2, playerName: '小林', avatar: '/assets/avatars/player-anime.png', text: '问题', verdict: '是' }], guesses: [{ id: 'g', at: 1, playerName: '阿夏', text: '还原', outcome: '接近真相' }] } as unknown as RoomView;
     render(<QuestionLog room={room} />);
     expect(screen.getAllByRole('article')[0].textContent).toContain('还原');
     expect(screen.getByText('是').className).toContain('green');
+    expect(screen.getByAltText('小林').getAttribute('src')).toBe('/assets/avatars/player-anime.png');
   });
   it('提交评价和好笑选项', () => {
     const rate = vi.fn();
