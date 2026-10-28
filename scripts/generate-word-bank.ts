@@ -150,12 +150,12 @@ for (let i = 0; i < maxLen; i++) {
 const orderedForSeed = interleaved.reverse();
 
 const seedPuzzles: SeedPuzzle[] = orderedForSeed.map((item): SeedPuzzle => {
-  const numTag = item.id.split('-')[1] || '01';
   const maskedWord = item.word[0] + ' ' + Array.from({ length: item.word.length - 1 }, () => '〇').join(' ');
+  const clueTitle = item.hints[0].replace(/^(成语|寓言故事)：/, '').split(/[，。！]/)[0]!.slice(0, 14);
   return {
     id: item.id,
-    title: `${item.category} #${numTag} · ${item.word.length}字词组`,
-    surface: `画题提示：${item.word.length} 个字 · 分类【${item.category}】 · 观察画板笔触，直接输入词组抢答！`,
+    title: `${clueTitle}（${item.word.length}字）`,
+    surface: `${item.hints[0]} · 所属分类【${item.category}】（共 ${item.word.length} 个字）`,
     bottom: item.word,
     hints: [
       `🖌️ 画法建议：${item.drawTip.replace(new RegExp(item.word, 'g'), '目标物')}`,

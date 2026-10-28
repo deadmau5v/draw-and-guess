@@ -53,20 +53,22 @@ export function LibraryBrowser({ onChoose, onBack, busy = false }: {
       <nav className="library-categories" aria-label="词组分类">
         {LIBRARY_CATEGORIES.map(item => <CandyButton key={item.id} size="sm" variant={category === item.id ? 'yellow' : 'blue'} appearance={category === item.id ? 'solid' : 'soft'} aria-pressed={category === item.id} leftIcon={<CandyGameIcon name={item.icon} size={18} />} onClick={() => { setCategory(item.id); setVisibleCount(PAGE_SIZE); }}>{item.label}</CandyButton>)}
       </nav>
-      <section aria-label="词组列表" aria-busy={loading || busy}>
-        <p role="status">{loading ? '正在加载词库…' : error ? '词库暂时无法加载' : `共 ${filtered.length} 组词`}</p>
-        {error ? <CandyAlert tone="error" title="加载失败" action={<CandyButton size="sm" onClick={() => setRefresh(value => value + 1)}>重试</CandyButton>}>{error}</CandyAlert>
-          : loading ? <CandySkeleton lines={4} />
-          : filtered.length ? <div className="library-card-grid">{filtered.slice(0, visibleCount).map(puzzle => <CandyCard key={puzzle.id} className="library-puzzle-card">
-            <div className="library-card-content">
-              <img className="library-cover" src={cdnUrl(puzzleCover(puzzle))} alt="" loading="lazy" width={960} height={640} />
-              <h2>{puzzle.title}</h2>
-              <div className="library-card-tags"><CandyBadge variant="blue">{puzzle.tags[0] || '词组'}</CandyBadge><CandyBadge variant="gray">{difficultyLabel(puzzle)}</CandyBadge></div>
-              <CandyButton variant="yellow" size="sm" disabled={busy} onClick={() => onChoose(puzzle.id)}>用这组词开房</CandyButton>
-            </div>
-          </CandyCard>)}</div>
-          : <CandyEmptyState title="未找到词组" description="试试其他分类或关键词。" action={<CandyButton onClick={reset}>重置筛选</CandyButton>} />}
-        {!loading && !error && visibleCount < filtered.length && <div className="library-load-more"><CandyButton variant="blue" appearance="outline" onClick={() => setVisibleCount(value => value + PAGE_SIZE)}>加载更多词组</CandyButton></div>}
+      <section className="library-results" aria-label="词组列表" aria-busy={loading || busy}>
+        <p className="library-results-meta" role="status">{loading ? '正在加载词库…' : error ? '词库暂时无法加载' : `共 ${filtered.length} 组词`}</p>
+        <div className="library-results-scroll">
+          {error ? <CandyAlert tone="error" title="加载失败" action={<CandyButton size="sm" onClick={() => setRefresh(value => value + 1)}>重试</CandyButton>}>{error}</CandyAlert>
+            : loading ? <CandySkeleton lines={4} />
+            : filtered.length ? <div className="library-card-grid">{filtered.slice(0, visibleCount).map(puzzle => <CandyCard key={puzzle.id} className="library-puzzle-card">
+              <div className="library-card-content">
+                <img className="library-cover" src={cdnUrl(puzzleCover(puzzle))} alt="" loading="lazy" width={960} height={640} />
+                <h2>{puzzle.title}</h2>
+                <div className="library-card-tags"><CandyBadge variant="blue">{puzzle.tags[0] || '词组'}</CandyBadge><CandyBadge variant="gray">{difficultyLabel(puzzle)}</CandyBadge></div>
+                <CandyButton variant="yellow" size="sm" disabled={busy} onClick={() => onChoose(puzzle.id)}>用这组词开房</CandyButton>
+              </div>
+            </CandyCard>)}</div>
+            : <CandyEmptyState title="未找到词组" description="试试其他分类或关键词。" action={<CandyButton onClick={reset}>重置筛选</CandyButton>} />}
+          {!loading && !error && visibleCount < filtered.length && <div className="library-load-more"><CandyButton variant="blue" appearance="outline" onClick={() => setVisibleCount(value => value + PAGE_SIZE)}>加载更多词组</CandyButton></div>}
+        </div>
       </section>
     </CandyPanel>
   </PageContainer>;

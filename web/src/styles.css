@@ -222,7 +222,7 @@ h1, h2, h3, h4 { margin-top: 0; }
 }
 .home-main { max-width: 1440px; margin: 8px auto 28px; padding: 12px 24px; }
 .home-main .board-col-left, .home-main .board-col-right { gap: 18px; }
-.home-ribbon { margin: -8px auto 0; width: 340px; max-width: 100%; }
+.home-ribbon { margin: 4px auto 0; width: 320px; max-width: 100%; }
 .home-main .mascot-avatar-wrap { margin: 0; padding-top: 4px; }
 .home-welcome { text-align: center; color: var(--text-muted); margin: -4px 0 4px; font-size: 14px; }
 .home-main .game-form-group { gap: 12px; }
@@ -296,14 +296,14 @@ h1, h2, h3, h4 { margin-top: 0; }
   .waiting-theme-art img { width: 54px; height: 44px; }
   .game-top-header { padding-block: 8px; }
   .header-banner-img { height: 76px; width: 290px; }
-  .home-main { height: calc(100dvh - 92px); padding-top: 40px; padding-bottom: 12px; }
-  .home-main .game-board-card { padding: 16px 28px !important; }
+  .home-main { height: calc(100dvh - 92px); padding-top: 12px; padding-bottom: 12px; }
+  .home-main .game-board-card { padding: 28px 28px 18px !important; }
   .home-main .board-col-left, .home-main .board-col-right { gap: 10px; }
   .home-main .mascot-avatar-wrap { padding-top: 0; }
   .home-main .mascot-avatar-wrap > div { width: clamp(88px, 13vh, 110px) !important; height: clamp(88px, 13vh, 110px) !important; }
   .home-welcome { margin: 0; font-size: 13px; }
   .home-main .game-form-group { gap: 8px; }
-  .home-entry { padding: 10px 18px; }
+  .home-entry { padding: 14px 18px; }
   .home-entry-art { margin-bottom: 0; height: clamp(42px, 9dvh, 76px); }
   .home-entry-image { width: clamp(54px, 11dvh, 84px); height: clamp(54px, 11dvh, 84px); max-height: 100%; object-fit: contain; }
   .home-entry-content { gap: 6px; }

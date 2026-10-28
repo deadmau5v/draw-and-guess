@@ -40,6 +40,6 @@ export default function Leaderboard() {
     {data?.self && <section aria-label="我的战绩"><CandyList variant="card" size="sm"><CandyListItem highlight
       leading={<CandyGameIcon name="trophy" size={24} />} title={`我的排名：第 ${data.self.rank} 名`}
       description={statistics(data.self)} trailing={<CandyBadge variant="blue" size="sm">{data.self.points} 分</CandyBadge>} /></CandyList></section>}
-    <footer className="leaderboard-rules"><p>猜对：100 基础分 + 最多 50 速度分；每次答错扣 5 分，最多扣 30 分。队友猜对，画手 +40 分。未猜对不得分。</p></footer>
+    <footer className="leaderboard-rules"><p>积分规则：按房间最大人数（15人）顺位递减，第 1 个猜中 +15 分，第 2 个 +14 分……队友猜对，画手 +5 分。</p></footer>
   </div>;
 }

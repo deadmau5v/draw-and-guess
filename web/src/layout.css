@@ -39,11 +39,11 @@ body { background: #1685ed; }
 }
 
 /* Reserve the floating ribbons' upper half inside the route's scroll frame. */
-.home-main > .page-viewport, .waiting-main > .page-viewport { padding-top: 48px; }
-.home-main .game-board-card { min-height: 620px; }
+.home-main > .page-viewport, .waiting-main > .page-viewport { padding-top: 24px; }
+.home-main .game-board-card { min-height: 540px; }
 .home-main .board-col-left, .home-main .board-col-right { min-width: 0; }
-.waiting-main .waiting-board { min-height: 580px; padding: 0 4px 8px; }
-.playing-main > .page-viewport { display: flex; flex-direction: column; }
+.waiting-main .waiting-board { min-height: 520px; padding: 0 4px 8px; }
+.playing-main > .page-viewport { display: flex; flex-direction: column; padding-top: 4px; overflow-y: auto; }
 .playing-main .playing-board { flex: 1; min-height: 0; }
 @media (min-width: 1101px) {
   .home-main > .page-viewport { display: flex; flex-direction: column; }
@@ -60,9 +60,13 @@ body { background: #1685ed; }
 }
 
 /* The floating title is outside the clipped panel; results retain local scrolling. */
-.library-main > .page-viewport { position: relative; display: flex; flex-direction: column; padding-top: 48px; }
-.library-shell { flex: 1; height: auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 20px; }
-.library-topline { flex: 0 0 58px; margin-bottom: 12px; }
+.library-main > .page-viewport { position: relative; display: flex; flex-direction: column; padding-top: 8px; }
+.library-shell { flex: 1; height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 18px 22px; gap: 10px; }
+.library-topline { flex: 0 0 auto; margin-bottom: 2px; }
+.library-topline h1 { margin: 0 0 2px; font-size: 24px; }
+.library-topline p { margin: 0; font-size: 13px; color: var(--text-muted); }
+.library-categories { margin-top: 4px !important; }
+.library-results-meta { margin: 4px 0 !important; }
 .library-main .library-ribbon-slot { top: 8px; z-index: 1; }
 .library-main .library-ribbon-slot > div { margin: 0; }
 .library-layout { flex: 1; min-height: 0; align-items: stretch; }

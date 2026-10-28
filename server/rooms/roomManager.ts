@@ -379,7 +379,8 @@ export class RoomManager {
   const r=this.rooms.get(code),g=r?.guesses.find(g=>g.id===guessId);
   if(!r||!g||r.phase!=='playing'||r.startedAt===null||r.drawerKey===g.playerKey||r.secretHolderKeys.includes(g.playerKey)||(r.settings.partyMode??'classic')!=='classic') return 0;
   const wrong=r.guesses.filter(item=>item.playerKey===g.playerKey&&item.id!==g.id&&(item.outcome==='还没猜对'||item.outcome==='接近真相')).length;
-  return correctGuessPoints(r.startedAt,g.at,r.settings.turnSeconds,wrong);
+  const solvedOrder=r.solvedRankings.filter(item=>item.playerKey!==r.drawerKey).length;
+  return correctGuessPoints(r.startedAt,g.at,r.settings.turnSeconds,wrong,solvedOrder);
  }
  applyOutcome(code:string,guessId:string,outcome:Outcome,credited?:{solverPoints:number;drawerPoints:number}):Result {
   const r=this.rooms.get(code);if(!r) return fail('NOT_FOUND','房间不存在');

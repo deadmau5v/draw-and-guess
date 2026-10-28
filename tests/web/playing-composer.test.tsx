@@ -129,7 +129,8 @@ it('只显示猜词记录和设备标签，不渲染题面、线索、提问和�
   expect(screen.getByRole('log').textContent).toContain('苹果');
   expect(screen.getByRole('log').textContent).toContain('猜对了');
   expect(screen.getByRole('log').textContent).toContain('+12 分');
-  expect(screen.getByText('macOS · Chrome')).toBeTruthy();
+  expect(screen.getByLabelText('macOS · Chrome')).toBeTruthy();
+  expect(container.textContent).not.toContain('macOS · Chrome');
   expect(container.textContent).not.toMatch(/不应展示|提问|提示|JEV|AI|海龟汤|线索板|推理进度/);
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(screen.queryByRole('dialog')).toBeNull();

@@ -60,7 +60,7 @@ export function PlayerList({ room, selfKey, disabled, onKick, compact = false }:
           {room.phase === 'playing' && room.drawerKey === player.key && <CandyBadge variant="yellow" size="sm">画手</CandyBadge>}
           {player.key === selfKey && <CandyBadge variant="gray" size="sm">你</CandyBadge>}
           {!player.online && <CandyBadge variant="gray" size="sm">离线</CandyBadge>}
-          {player.device && <CandyBadge variant="blue" size="sm" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}><CandyGameIcon name={player.device.kind === 'stylus' ? 'pencil' : 'controller'} size={12} /> {player.device.label.replace(/\s*\([^)]*\)/g, '')}</CandyBadge>}
+          {player.device && <CandyBadge variant="blue" size="sm" aria-label={player.device.label} title={player.device.label}><CandyGameIcon name={player.device.kind === 'stylus' ? 'pencil' : player.device.kind === 'mobile' ? 'phone' : player.device.kind === 'tablet' ? 'tablet' : 'laptop'} size={13} /></CandyBadge>}
         </span>}
         description={`本轮 ${player.roundPoints ?? 0} 分 · 总分 ${player.totalPoints ?? 0} 分`}
         trailing={host && player.key !== selfKey ? <CandyButton variant="red" size="xs" disabled={disabled} onClick={() => onKick(player.key)}>移出</CandyButton> : undefined} />)}

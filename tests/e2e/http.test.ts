@@ -37,10 +37,10 @@ test('房间大厅仅返回有在线玩家且未满的房间摘要，不泄露�
   for(const room of payload) {expect(Object.keys(room).sort()).toEqual(['code','hostName','maxPlayers','phase','players']);}
   return payload;
  };
- expect(await read()).toEqual([{code,hostName:'大厅房主',players:1,maxPlayers:8,phase:'lobby'}]);
+ expect(await read()).toEqual([{code,hostName:'大厅房主',players:1,maxPlayers:15,phase:'lobby'}]);
  deps.rooms.start(code,'private-host-key','test-1',1);
  expect(await read()).toMatchObject([{phase:'playing'}]);
- for(let i=1;i<8;i++) deps.rooms.join(code,`玩家${i}`,`player-${i}`,`socket-${i}`);
+ for(let i=1;i<15;i++) deps.rooms.join(code,`玩家${i}`,`player-${i}`,`socket-${i}`);
  expect(await read()).toEqual([]);
  const ended=deps.rooms.createRoom('结束房间','ended');if(!ended.ok) throw Error(ended.msg);
  deps.rooms.join(ended.value.code,'结束房间','ended','ended-socket');

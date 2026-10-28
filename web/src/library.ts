@@ -37,10 +37,11 @@ export function difficultyLabel(puzzle: Pick<PuzzleSummary, 'difficulty'>): stri
 }
 export function puzzleCover(puzzle: Pick<PuzzleSummary, 'title' | 'surfacePreview'>): string {
   const text = `${puzzle.title} ${puzzle.surfacePreview}`;
-  const scene = /水果|植物|自然|交通/.test(text) ? 'nature'
-    : /食物|甜品|饮品/.test(text) ? 'food'
-    : /物件|小物|文具|工具/.test(text) ? 'object'
-    : /成语|四字/.test(text) ? 'idiom' : 'animal';
+  const scene = /成语|四字|寓言/.test(text) ? 'idiom'
+    : /水果|食物|甜品|饮品|美味|早餐|小吃/.test(text) ? 'food'
+    : /物件|小物|文具|工具|日常/.test(text) ? 'object'
+    : /自然|交通|植物|天气|夜空/.test(text) ? 'nature'
+    : 'animal';
   return `/assets/puzzle-covers/${scene}.webp`;
 }
 export function pickRecommendation(puzzles: PuzzleSummary[]): PuzzleSummary | undefined {

@@ -154,7 +154,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const LIMITS = {
-  maxPlayers: 8,
+  maxPlayers: 15,
   questionMax: 120,
   guessMax: 400,
   nameMax: 16,

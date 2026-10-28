@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CandyBadge, CandyButton, CandyCard, CandyGameIcon, CandyInput, CandyList, CandyListItem, CandyPanel } from 'candy-ui';
+import { CandyBadge, CandyButton, CandyCard, CandyGameIcon, CandyInput, CandyList, CandyListItem, CandyPanel, CandyRibbon } from 'candy-ui';
 import { PageContainer } from './PageContainer';
 import HeaderDialogs from './HeaderDialogs';
+import { cdnUrl } from './cdn';
 import { notify } from './store';
 
 const roomCodePattern = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
@@ -27,8 +28,14 @@ export function Home({ name, onName, onCreate, onJoin, onLibrary = () => { locat
   return <PageContainer className="home-main">
     <CandyPanel theme="frosted" className="game-board-card" style={{ padding: 28 }}>
       <section className="board-col-left">
-        <h1>你画我猜</h1>
-        <p>创建房间，邀请好友一起画画猜词。</p>
+        <CandyRibbon color="blue" className="home-ribbon">快速开始</CandyRibbon>
+        <div className="mascot-avatar-wrap">
+          <img src={cdnUrl('/assets/turtle-think.png')} alt="你画我猜小画家" style={{ width: 126, height: 126, objectFit: 'contain' }} />
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 24 }}>你画我猜</h1>
+          <p className="home-welcome" style={{ margin: 0 }}>创建房间，邀请好友一起画画猜词。</p>
+        </div>
         <div className="game-form-group">
           <CandyInput id="nickname" label="你的昵称" value={name} maxLength={16} placeholder="输入昵称"
             onChange={event => onName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && name.trim()) onCreate(); }} />
@@ -39,15 +46,28 @@ export function Home({ name, onName, onCreate, onJoin, onLibrary = () => { locat
         </div>
       </section>
       <section className="board-col-right">
+        <CandyRibbon color="blue" className="home-ribbon">派对入口</CandyRibbon>
+        <div className="feature-grid-2x2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+          <CandyButton variant="green" shape="rounded" appearance="soft" className="home-entry" fullWidth aria-label="词库" onClick={onLibrary}>
+            <span className="home-entry-content">
+              <span className="home-entry-art"><img src={cdnUrl('/assets/home/puzzle-library.png')} alt="" className="home-entry-image" /><CandyGameIcon name="book" size={24} /></span>
+              <strong>词库</strong>
+              <span className="home-entry-description">水果·动物·美食·成语词组</span>
+            </span>
+          </CandyButton>
+          <CandyButton variant="purple" shape="rounded" appearance="soft" className="home-entry" fullWidth aria-label="排行榜" onClick={() => setLeaderboardOpen(true)}>
+            <span className="home-entry-content">
+              <span className="home-entry-art"><img src={cdnUrl('/assets/home/leaderboard.png')} alt="" className="home-entry-image" /><CandyGameIcon name="trophy" size={24} /></span>
+              <strong>排行榜</strong>
+              <span className="home-entry-description">查看最高分与猜中回合</span>
+            </span>
+          </CandyButton>
+        </div>
         <CandyCard title="三步开玩">
           <CandyList aria-label="玩法指南">
-            {['创建或加入房间，邀请好友。', '轮到画手画词，其他玩家看画猜词。', '回合结束结算得分，再开始下一轮。'].map((step, index) => <CandyListItem key={step} leading={<CandyBadge variant="blue">{index + 1}</CandyBadge>} title={step} />)}
+            {['创建或加入房间，邀请好友（最多 15 人同玩）。', '轮到画手画词，其他玩家看画猜词。', '第 1 个猜中得 15 分、第 2 个得 14 分，回合结束轮换画手。'].map((step, index) => <CandyListItem key={step} leading={<CandyBadge variant="blue">{index + 1}</CandyBadge>} title={step} />)}
           </CandyList>
         </CandyCard>
-        <nav className="actions-row" aria-label="更多">
-          <CandyButton variant="blue" appearance="outline" onClick={onLibrary} leftIcon={<CandyGameIcon name="book" />}>词库</CandyButton>
-          <CandyButton variant="purple" appearance="outline" onClick={() => setLeaderboardOpen(true)} leftIcon={<CandyGameIcon name="trophy" />}>排行榜</CandyButton>
-        </nav>
       </section>
     </CandyPanel>
     {leaderboardOpen && <HeaderDialogs kind="leaderboard" onClose={() => setLeaderboardOpen(false)} />}
