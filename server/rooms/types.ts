@@ -12,6 +12,9 @@ export interface RoomState extends Omit<RoomView,'players'|'puzzle'|'hints'|'pro
  revealReason:'solved'|'host'|'exhausted'|null;
  offlineAt:number|null;
  startedAt:number|null;
+ /** Stable across reconnect/server snapshots; new UUID for every new round. */
+ gameId:string;
+ secretHolderKeys:string[];
  progress:ProgressView;
  drawerKey:string|null;
  strokes:CanvasStroke[];

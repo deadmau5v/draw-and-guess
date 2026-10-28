@@ -33,9 +33,9 @@ export default function LibraryPage() {
   };
   return <>
     <LibraryBrowser onChoose={onChoose} onBack={() => router.push('/')} busy={busy} />
-    {pendingPuzzle !== null && <CandyModal isOpen onClose={() => setPendingPuzzle(null)} title="填写侦探昵称">
-      <CandyInput aria-label="侦探昵称" placeholder="请输入昵称" maxLength={16} value={name} onChange={e => setName(e.target.value)} />
-      <div className="actions-row"><CandyButton variant="yellow" disabled={!name.trim()} loading={busy} onClick={() => { if (pendingPuzzle) void create(pendingPuzzle, name); }}>开始挑战</CandyButton></div>
+    {pendingPuzzle !== null && <CandyModal isOpen onClose={() => setPendingPuzzle(null)} title="填写昵称">
+      <CandyInput aria-label="你的昵称" placeholder="请输入昵称" maxLength={16} value={name} onChange={e => setName(e.target.value)} />
+      <div className="actions-row"><CandyButton variant="yellow" disabled={!name.trim()} loading={busy} onClick={() => { if (pendingPuzzle) void create(pendingPuzzle, name); }}>创建房间</CandyButton></div>
     </CandyModal>}
   </>;
 }

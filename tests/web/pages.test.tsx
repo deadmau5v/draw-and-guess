@@ -11,6 +11,7 @@ import App, { Home, Library, Room } from '../../web/src/App';
 import { GameProvider } from '../../web/src/theme';
 import { updateState } from '../../web/src/store';
 import type { RoomView } from '@shared/protocol';
+import { DEFAULT_SETTINGS } from '@shared/protocol';
 
 beforeAll(() => {
   if (typeof window !== 'undefined') {
@@ -80,9 +81,10 @@ it('房间加载使用满高独立卡片，底部保留返回操作且不嵌套�
 });
 it('首页说明玩法，保存昵称并创建房间', async () => {
   render(<App />);
-  expect(await screen.findByText(/汤面 → 提问 → 是\/不是\/不相关 → 每人8问 → 还原真相/)).toBeTruthy();
+  expect(await screen.findByText('三步开玩')).toBeTruthy();
+  expect(document.body.textContent).not.toMatch(/提问|海龟汤|JEV|10.*模式|额度/);
   fireEvent.change(screen.getByLabelText('你的昵称'), { target: { value: '小林' } });
-  fireEvent.click(screen.getByRole('button', { name: '创建房间 →' }));
+  fireEvent.click(screen.getByRole('button', { name: '创建房间' }));
   await waitFor(() => expect(fake.createRoom).toHaveBeenCalledWith({ name: '小林', playerKey: expect.any(String) }));
   expect(localStorage.getItem('turtle:name')).toBe('小林');
   await waitFor(() => expect(location.hash).toBe('#/room/ABC234'));
@@ -94,26 +96,22 @@ it('跳过导航只移动焦点，不改变当前游戏路由', async () => {
   await waitFor(() => expect(document.activeElement?.id).toBe('main-content'));
   expect(location.hash).toBe('#/room/ABC234');
 });
-it('单人随机一碗发送自动开局意图', async () => {
+it('首页开始创建调用默认创建流程', async () => {
   const create = vi.fn();
   render(<Home name="小林" onName={() => {}} onCreate={create} onJoin={() => {}} busy={false} />);
-  fireEvent.click(screen.getByRole('button', { name: '单人随机一碗' }));
-  expect(create).toHaveBeenCalledWith('random');
+  fireEvent.click(screen.getByRole('button', { name: '创建房间' }));
+  expect(create).toHaveBeenCalledWith();
 });
-it('题库默认排除重口并支持切换高评与搜索', async () => {
+it('词库只加载公开词组并支持搜索', async () => {
   render(<Library onChoose={() => {}} busy={false} />);
   await waitFor(() => expect(fake.puzzles).toHaveBeenCalledWith(expect.objectContaining({ excludeNsfl: true, sort: 'new' }), expect.any(AbortSignal)));
-  fireEvent.click(screen.getByRole('combobox', { name: '题库排序' }));
-  fireEvent.click(screen.getByRole('option', { name: '最多挑战' }));
-  fireEvent.change(screen.getByLabelText('搜索题目'), { target: { value: '酒保' } });
-  await waitFor(() => expect(fake.puzzles).toHaveBeenCalledWith(expect.objectContaining({ sort: 'hot', q: '酒保' }), expect.any(AbortSignal)));
+  expect(screen.getByRole('textbox', { name: '搜索词组' })).toBeTruthy();
+  expect(screen.queryByRole('combobox')).toBeNull();
 });
-it('房间显示汤面、玩家、8问额度与房主面板', () => {
-  const room: RoomView = { code: 'ABC234', phase: 'playing', hostKey: 'me', settings: { quotaMode: 'perPlayer', quota: 8, turnMode: 'free', turnSeconds: 90, maxGuesses: 3, excludeNsfl: true }, players: [{ key: 'me', name: '小林', online: true, isHost: true, asked: 0, guesses: 0, pending: false }], puzzle: { id: 'p', title: '谜题', surface: '汤面故事', nsfl: false, tags: [], difficulty: 2, source: { key: 'test', repo: '', url: '', license: 'MIT' }, sourceKey: 'test', hintCount: 0, goodRate: null, tier: 'none', funny: 0, ratings: 0, plays: 0, solves: 0 }, log: [], guesses: [], highlights: [], hints: [], hintCount: 0, sharedUsed: 0, turnKey: null, turnDeadline: null, turnRemainingMs: null, serverNow: 1000, round: 1, reveal: null };
+it('兼容 SPA 页面不渲染旧问答逻辑', () => {
+  const room = { code: 'ABC234', phase: 'playing', hostKey: 'me', settings: { ...DEFAULT_SETTINGS }, players: [{ key: 'me', name: '小林', online: true, isHost: true, roundPoints: 0, totalPoints: 0 }], puzzle: null, log: [], guesses: [], highlights: [], hints: [], hintCount: 0, sharedUsed: 0, turnKey: null, turnDeadline: null, turnRemainingMs: null, serverNow: 1000, round: 1, reveal: null } as unknown as RoomView;
   updateState({ room, joined: true, status: 'connected' });
   render(<Room code="ABC234" name="小林" playerKey="me" onName={() => {}} onLeave={() => {}} />);
-  expect(screen.getByText('汤面故事')).toBeTruthy();
-  expect(screen.getByText('剩余 8 问')).toBeTruthy();
-  expect(screen.getByText('房主控制')).toBeTruthy();
+  expect(document.body.textContent).not.toMatch(/剩余.*问|提问|海龟汤/);
 });
 

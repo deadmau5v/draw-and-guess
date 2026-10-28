@@ -13,7 +13,13 @@ export function openDb(path: string): DatabaseSync {
  CREATE TABLE IF NOT EXISTS score_awards(id TEXT PRIMARY KEY, player_key TEXT NOT NULL, puzzle_id TEXT NOT NULL, norm_text TEXT NOT NULL, points INTEGER NOT NULL CHECK(points BETWEEN 0 AND 10), proximity INTEGER NOT NULL CHECK(proximity BETWEEN 0 AND 100), created_at INTEGER NOT NULL, UNIQUE(player_key,puzzle_id,norm_text));
  CREATE TABLE IF NOT EXISTS room_snapshots(code TEXT PRIMARY KEY, state TEXT NOT NULL, updated_at INTEGER NOT NULL);
  CREATE INDEX IF NOT EXISTS player_scores_ranking ON player_scores(points DESC,best_proximity DESC,updated_at ASC);`);
- // Existing production databases keep their puzzle/history/cache rows intact.
+ // Additive migration preserves legacy 0..10 proximity awards and all history.
+ // Separate table avoids rebuilding legacy CHECK constraints and unique indexes.
+ db.exec(`CREATE TABLE IF NOT EXISTS round_score_awards(
+  room_code TEXT NOT NULL, game_id TEXT NOT NULL, round INTEGER NOT NULL CHECK(round>0),
+  role TEXT NOT NULL CHECK(role IN ('solver','drawer')), player_key TEXT NOT NULL,
+  points INTEGER NOT NULL CHECK(points BETWEEN 0 AND 150), created_at INTEGER NOT NULL,
+  PRIMARY KEY(room_code,game_id,round,role));`);
  if (!db.prepare('PRAGMA table_info(judge_cache)').all().some(column => column.name === 'proximity')) db.exec('ALTER TABLE judge_cache ADD COLUMN proximity INTEGER');
  db.exec(`UPDATE puzzles SET
   plays = MAX(plays, (SELECT count(*) FROM games WHERE games.puzzle_id = puzzles.id)),
@@ -25,7 +31,8 @@ export function seedIfEmpty(db: DatabaseSync, seedPuzzles: SeedPuzzle[]): void {
  try {
   if (Number(db.prepare('SELECT count(*) AS n FROM puzzles').get()?.n) === 0) {
    const insert=db.prepare('INSERT INTO puzzles(id,title,surface,bottom,hints,difficulty,tags,nsfl,source,also_in,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
-   for(const p of seedPuzzles) insert.run(p.id,p.title,p.surface,p.bottom,JSON.stringify(p.hints),p.difficulty,JSON.stringify(p.tags),Number(p.nsfl),JSON.stringify(p.source),JSON.stringify(p.alsoIn),Date.now());
+   const base=Date.now();
+   seedPuzzles.forEach((p,idx)=>insert.run(p.id,p.title,p.surface,p.bottom,JSON.stringify(p.hints),p.difficulty,JSON.stringify(p.tags),Number(p.nsfl),JSON.stringify(p.source),JSON.stringify(p.alsoIn),base+idx));
   }
   db.exec('COMMIT');
  } catch(e) { db.exec('ROLLBACK'); throw e; }

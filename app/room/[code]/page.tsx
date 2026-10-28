@@ -14,8 +14,6 @@ import { triggerCandyConfetti, CandyButton, CandyInput, CandyModal } from 'candy
 
 const PlayingRoom = lazy(() => import('../../../web/src/PlayingRoom').then(module => ({ default: module.PlayingRoom })));
 const WaitingRoom = lazy(() => import('../../../web/src/WaitingRoom').then(module => ({ default: module.WaitingRoom })));
-const GuessModal = lazy(() => import('../../../web/src/components').then(module => ({ default: module.GuessModal })));
-const RevealModal = lazy(() => import('../../../web/src/components').then(module => ({ default: module.RevealModal })));
 const roomCodePattern = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
 
 export default function RoomPage() {
@@ -25,8 +23,6 @@ export default function RoomPage() {
   const validCode = roomCodePattern.test(code);
   const game = useGame();
   const room = game.room?.code === code ? game.room : null;
-  const [guessOpen, setGuessOpen] = useState(false);
-  const [revealOpen, setRevealOpen] = useState(false);
   const [playerKey, setPlayerKey] = useState('');
   const [name, setName] = useState('');
   const [nameOpen, setNameOpen] = useState(false);
@@ -63,7 +59,6 @@ export default function RoomPage() {
   }, [code, room?.phase, room?.hostKey, room?.round, room?.settings.turnMode, playerKey, game.joined]);
   useEffect(() => {
     if (room?.phase === 'revealed') {
-      setRevealOpen(true);
       if (room.reveal?.reason === 'solved') triggerCandyConfetti();
     }
   }, [room?.phase, room?.round]);
@@ -71,8 +66,8 @@ export default function RoomPage() {
   const copyInvite = async () => {
     notify(await copyTextToClipboard(`${window.location.origin}/room/${code}`) ? '邀请链接已复制' : '复制失败');
   };
-  const nameModal = nameOpen && <CandyModal isOpen onClose={onLeave} title="填写侦探昵称">
-    <CandyInput aria-label="侦探昵称" placeholder="请输入昵称" value={name} onChange={e => setName(e.target.value)} />
+  const nameModal = nameOpen && <CandyModal isOpen onClose={onLeave} title="填写玩家昵称">
+    <CandyInput aria-label="玩家昵称" placeholder="请输入昵称" value={name} onChange={e => setName(e.target.value)} />
     <div className="actions-row"><CandyButton disabled={!name.trim()} onClick={() => {
       localStorage.setItem('turtle:name', name.trim());
       window.dispatchEvent(new Event('turtle:profile'));
@@ -91,11 +86,7 @@ export default function RoomPage() {
     <Suspense fallback={<SectionLoading label={room.phase === 'lobby' ? '正在准备房间…' : '正在准备对局…'} skeleton />}>
       {room.phase === 'lobby'
         ? <WaitingRoom room={room} selfKey={playerKey} disabled={disabled} onLeave={onLeave} onInvite={copyInvite} onSettings={actions.settings} onStart={actions.start} onKick={key => actions.kick(key).catch(err => notify(err.message))} />
-        : <PlayingRoom room={room} selfKey={playerKey} disabled={disabled} onLeave={onLeave} onInvite={copyInvite} onGuess={() => setGuessOpen(true)} onReveal={() => setRevealOpen(true)} />}
-    </Suspense>
-    <Suspense fallback={null}>
-      {guessOpen && <GuessModal disabled={disabled} remaining={Math.max(0, room.settings.maxGuesses - (me?.guesses ?? 0))} surface={room.puzzle?.surface} onClose={() => setGuessOpen(false)} onGuess={text => actions.guess(text).catch(err => notify(err.message))} />}
-      {room.phase === 'revealed' && room.reveal && <RevealModal opened={revealOpen} onClose={() => setRevealOpen(false)} reveal={room.reveal} disabled={disabled} onRate={(score, funny) => actions.rate(score, funny).catch(err => notify(err.message))} />}
+        : <PlayingRoom room={room} selfKey={playerKey} disabled={disabled} onLeave={onLeave} onInvite={copyInvite} />}
     </Suspense>
     {nameModal}
   </PageContainer>;

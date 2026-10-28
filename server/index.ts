@@ -10,8 +10,10 @@ import { createApp } from './app.js';
 const dev = process.env.NODE_ENV !== 'production';
 const config = loadConfig();
 const db = openDb(config.dbPath);
-seedIfEmpty(db, loadSeedFile());
+const seedPuzzles = loadSeedFile();
+seedIfEmpty(db, seedPuzzles);
 const repo = new PuzzleRepo(db);
+repo.reconcilePlayable(seedPuzzles);
 const rooms = new RoomManager();
 try {
   const rows = db.prepare('SELECT state FROM room_snapshots WHERE updated_at >= ?').all(Date.now() - 600000) as { state: string }[];

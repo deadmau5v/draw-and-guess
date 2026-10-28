@@ -1,96 +1,39 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render as rtlRender, screen } from '@testing-library/react';
-import { AskBox, ContentWarning, QuestionLog, RatingBar } from '../../web/src/components';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { GuessModal, PlayerList, RevealModal } from '../../web/src/components';
 import { GameProvider } from '../../web/src/theme';
+import { updateState } from '../../web/src/store';
 import type { RoomView } from '@shared/protocol';
 
 beforeAll(() => {
-  if (typeof window !== 'undefined') {
-    if (!window.matchMedia) {
-      Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation(query => ({
-          matches: false,
-          media: query,
-          onchange: null,
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-          dispatchEvent: vi.fn(),
-        })),
-      });
-    }
-    if (!window.ResizeObserver) {
-      class MockResizeObserver {
-        observe = vi.fn();
-        unobserve = vi.fn();
-        disconnect = vi.fn();
-      }
-      window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
-      global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
-    }
-  }
+  if (!window.matchMedia) Object.defineProperty(window, 'matchMedia', { writable: true, value: vi.fn().mockImplementation(query => ({ matches: false, media: query, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() })) });
+  if (!window.ResizeObserver) { class MockResizeObserver { observe = vi.fn(); unobserve = vi.fn(); disconnect = vi.fn(); } window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver; global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver; }
 });
+afterEach(() => { cleanup(); updateState({ room: null }); });
+const renderWithGame = (ui: React.ReactElement) => render(ui, { wrapper: GameProvider });
 
-const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: GameProvider });
-
-afterEach(cleanup);
-describe('房间交互', () => {
-  it('重口汤面必须确认后才展开', () => {
-    render(<ContentWarning warning id="p1"><p>隐藏汤面</p></ContentWarning>);
-    expect(screen.queryByText('隐藏汤面')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: '我已了解，继续' }));
-    expect(screen.getByText('隐藏汤面')).toBeTruthy();
+describe('简化对局控件', () => {
+  it('猜词只提交直接答案，不展示提示、剩余次数或距离反馈', () => {
+    const onGuess = vi.fn(); renderWithGame(<GuessModal disabled={false} remaining={8} surface="隐藏的旧故事提示" onClose={() => {}} onGuess={onGuess} />);
+    const input = screen.getByRole('textbox', { name: '你的答案' });
+    expect(document.body.textContent).not.toMatch(/剩余|问题|提示|接近|还原/);
+    expect(document.body.textContent).not.toContain('隐藏的旧故事提示');
+    fireEvent.change(input, { target: { value: '苹果' } });
+    fireEvent.click(screen.getByRole('button', { name: '提交答案' }));
+    expect(onGuess).toHaveBeenCalledWith('苹果');
   });
-  it('Enter 提交问题，Shift+Enter 保留输入，pending 禁用', () => {
-    const submit = vi.fn();
-    const { rerender } = rtlRender(<AskBox remaining={5} disabled={false} onAsk={submit} />, { wrapper: GameProvider });
-    const input = screen.getByLabelText('你的问题');
-    fireEvent.change(input, { target: { value: '他认识这个人吗？' } });
-    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
-    expect(submit).not.toHaveBeenCalled();
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(submit).toHaveBeenCalledWith('他认识这个人吗？');
-    rerender(<AskBox remaining={0} disabled onAsk={submit} />);
-    expect(screen.getByRole('button', { name: '提问 →' }).hasAttribute('disabled')).toBe(true);
+  it('玩家列表只呈现轮次和总分，不展示提问数或猜词次数', () => {
+    const room = { phase: 'playing', hostKey: 'a', drawerKey: 'a', players: [{ key: 'a', name: '小林', online: true, isHost: true, asked: 5, guesses: 2, roundPoints: 40, totalPoints: 120 }] } as unknown as RoomView;
+    renderWithGame(<PlayerList room={room} selfKey="a" disabled={false} onKick={() => {}} />);
+    expect(screen.getByText('本轮 40 分 · 总分 120 分')).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/提问|猜词次数|互动5/);
   });
-  it('问答与猜测按时间穿插并标记判定颜色', () => {
-    const room = { players: [], log: [{ id: 'q', at: 2, playerName: '小林', avatar: '/assets/avatars/player-anime.png', text: '问题', verdict: '是' }], guesses: [{ id: 'g', at: 1, playerName: '阿夏', text: '还原', outcome: '接近真相' }] } as unknown as RoomView;
-    render(<QuestionLog room={room} />);
-    expect(screen.getAllByRole('article')[0].textContent).toContain('还原');
-    expect(screen.getByText('是').className).toContain('green');
-    expect(screen.getByAltText('小林').getAttribute('src')).toBe('/assets/avatars/player-anime.png');
-  });
-  it('提交评价和好笑选项', () => {
-    const rate = vi.fn();
-    render(<RatingBar onRate={rate} disabled={false} />);
-    fireEvent.click(screen.getByRole('button', { name: '好笑' }));
-    fireEvent.click(screen.getByRole('button', { name: '好汤' }));
-    expect(rate).toHaveBeenLastCalledWith(1, true);
-  });
-  it('QuestionLog 空状态优雅展示且没有 emoji', () => {
-    const room = { log: [], guesses: [] } as unknown as RoomView;
-    render(<QuestionLog room={room} />);
-    expect(screen.getByText('等待第一位侦探提问')).toBeTruthy();
-    expect(screen.getByText(/支持是非提问/)).toBeTruthy();
-  });
-  it('AskBox 显示进度条与线索', () => {
-    render(
-      <AskBox
-        remaining={5}
-        disabled={false}
-        hints={['关键在于那杯水']}
-        totalHints={3}
-        progress={{ score: 45, status: '初见端倪' }}
-        onAsk={() => {}}
-      />
-    );
-    expect(screen.getByText('初见端倪')).toBeTruthy();
-    expect(screen.getByText('45%')).toBeTruthy();
-    expect(screen.getByText('线索 1/3')).toBeTruthy();
-    expect(screen.getByText('关键在于那杯水')).toBeTruthy();
+  it('答案揭晓显示答案并可关闭', () => {
+    const close = vi.fn(); renderWithGame(<RevealModal opened onClose={close} reveal={{ bottom: '苹果', reason: 'solved', hints: [], winnerName: '小林' }} />);
+    expect(screen.getByText('苹果')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '返回对局' }));
+    expect(close).toHaveBeenCalled();
   });
 });

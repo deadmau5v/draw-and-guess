@@ -13,7 +13,7 @@ export interface JudgeService {
 export function normalize(text:string):string { return text.trim().replace(/[？?。.!！]+$/u,'').trim().replace(/\s+/gu,' ').toLowerCase(); }
 export function extractTargetWord(bottom:string):string { return bottom.split(/[（(]/)[0]!.trim()||bottom.trim(); }
 const questionCriteria={是:'汤底明确或可合理推出该提问为真。',不是:'汤底明确或可合理推出该提问为假。',不相关:'该提问与汤底中的人物、事件、因果无实质关系，或汤底无法判断且不影响推理。'};
-const solutionCriteria={破解成功:'猜中或说中了谜底的核心反转或关键真相（例如“第五个人是死人，被四个人抬棺到教堂”这种核心诡计、隐秘身份或反常原因）。只要命中核心反转/核心真相即判定为破解成功，绝不苛求玩家逐字复述已知汤面背景细节。',接近真相:'抓住了部分反转或方向正确，但遗漏了最关键的核心反转事实。',还没猜对:'与汤底核心事实不符，或者过于笼统、毫无实质进展。'};
+const solutionCriteria={破解成功:'玩家猜词是目标词本身，或日常语言中明确指向同一事物的同义词、别称。仅描述属性、类别、相关事物，或在多个候选中罗列到答案，不算猜中。',接近真相:'词语相关但不等同于目标词，仍未猜中。',还没猜对:'猜词与目标词不是同一事物；仅泛泛描述类别或属性。'};
 const proximityAssessment={
  instructions:'仅评估本次玩家提问对汤底真相的相关性与关键因果突破，独立于真假判定。不是的回答也可能排除关键错误假设而获得高分；是的回答若只确认外围事实不能获得高分。不相关的问题为0分。只输出评分，不输出解释或泄露汤底、补充事实。',
  criteria:[
@@ -51,17 +51,18 @@ function summarizeStrokes(strokes:CanvasStroke[]):Record<string,unknown> {
 export function createJevJudge(config:Config,db:DatabaseSync,fetchImpl?:typeof fetch):Required<JudgeService> {
  const cache=new Lru<string,DecisionResult>(500); const inflight=new Map<string,Promise<DecisionResult>>(); const inflightProgress=new Map<string,Promise<{score:number;status:string}>>(); let cost=0;
  async function run(p:PuzzleSecret,text:string,kind:'question'|'solution'):Promise<DecisionResult> {
-  const norm=normalize(text),key=JSON.stringify([p.id,kind,norm]); const hit=cache.get(key); if(hit) return hit;
+  const cacheKind=kind==='solution'&&p.source.key==='draw-bank'?'solution:pictionary-v1':kind;
+   const norm=normalize(text),key=JSON.stringify([p.id,p.bottom,cacheKind,norm]); const hit=cache.get(key); if(hit) return hit;
   const isQuestion=kind==='question';
-  const row=db.prepare('SELECT choice,confidence,proximity FROM judge_cache WHERE puzzle_id=? AND kind=? AND norm_text=?').get(p.id,kind,norm);
+  const row=db.prepare('SELECT choice,confidence,proximity FROM judge_cache WHERE puzzle_id=? AND kind=? AND norm_text=?').get(p.id,cacheKind,norm);
   if(row&&(!isQuestion||row.proximity!=null)) { const value={choice:String(row.choice),confidence:Number(row.confidence),cost:0,...(row.proximity==null?{}:{proximity:Number(row.proximity)})}; cache.set(key,value); return value; }
   const pending=inflight.get(key); if(pending) return pending;
   const task=(async()=>{
    try {
-    const value=await decide({apiKey:config.apiKey,model:config.model,state:{汤面:p.surface,汤底:p.bottom,补充事实:p.hints,...(isQuestion?{玩家提问:text}:{玩家还原:text})},instructions:isQuestion?'你是海龟汤与你画我猜主持人。仅依据汤底/目标词判断玩家提问的真假，只能选 是、不是、不相关。':'你是海龟汤与你画我猜主持人。判断玩家提交的猜词或还原是否猜中谜底的核心真相或同义别称。只要命中目标词或核心反转即判定为【破解成功】，严禁苛求逐字复述外围细节。',criteria:isQuestion?questionCriteria:solutionCriteria,...(isQuestion?{proximity:proximityAssessment}:{})},{fetchImpl});
+    const value=await decide({apiKey:config.apiKey,model:config.model,state:{汤面:p.surface,汤底:p.bottom,补充事实:p.hints,...(isQuestion?{玩家提问:text}:{玩家还原:text})},instructions:isQuestion?'你是海龟汤与你画我猜主持人。仅依据汤底/目标词判断玩家提问的真假，只能选 是、不是、不相关。':'你是经典你画我猜裁判。只判断玩家猜词是否与保密目标词含义相同，允许明确同义词和别称；不得按故事反转、相关特征或大类判为成功。只输出结构化判定，不输出目标词。',criteria:isQuestion?questionCriteria:solutionCriteria,...(isQuestion?{proximity:proximityAssessment}:{})},{fetchImpl});
     cost+=value.cost;
     const threshold=!isQuestion&&value.choice==='破解成功'?config.solveThreshold:config.judgeThreshold;
-    if(value.confidence>=threshold) { cache.set(key,value); db.prepare('INSERT OR REPLACE INTO judge_cache(puzzle_id,kind,norm_text,choice,confidence,proximity,created_at) VALUES(?,?,?,?,?,?,?)').run(p.id,kind,norm,value.choice,value.confidence,value.proximity??null,Date.now()); }
+    if(value.confidence>=threshold) { cache.set(key,value); db.prepare('INSERT OR REPLACE INTO judge_cache(puzzle_id,kind,norm_text,choice,confidence,proximity,created_at) VALUES(?,?,?,?,?,?,?)').run(p.id,cacheKind,norm,value.choice,value.confidence,value.proximity??null,Date.now()); }
     return value;
    } finally { inflight.delete(key); }
   })();
@@ -127,16 +128,16 @@ export function createJevJudge(config:Config,db:DatabaseSync,fetchImpl?:typeof f
    const strokeCount=strokes.length;
    const hasImage=isValidJevImageDataUrl(snapshotDataUrl);
    if(strokeCount===0 && !hasImage) {
-    return {guess:'空白画布',comment:'JEV 多模态鉴画官：画板上还没有落笔呢，快画上几笔让我看看！',confidence:0,similarity:0,multimodal:false,at:Date.now()};
+    return {guess:'空白画布',comment:'AI 鉴画官：画板上还没有落笔呢，快画上几笔让我看看！',confidence:0,similarity:0,multimodal:false,at:Date.now()};
    }
    const fallbackGuess=()=>{
     const sim=Math.min(92,Math.max(18,(strokeCount||1)*14));
     const category=p.tags[1]||p.tags[0]||'神秘事物';
     const stage=sim>=75?'神形兼备':sim>=45?'颇有灵气':'抽象派大作';
     const comments=[
-     `JEV 鉴画官（${stage}）：看出是「${category}」方向，线条轮廓很有辨识度！`,
-     `JEV 鉴画官（${stage}）：用色大胆，抓住了核心几何特征，再添一点细节就呼之欲出了！`,
-     `JEV 鉴画官（${stage}）：这几笔灵魂勾勒很有神韵，猜词队友注意观察主体轮廓！`,
+     `AI 鉴画官（${stage}）：看出是「${category}」方向，线条轮廓很有辨识度！`,
+     `AI 鉴画官（${stage}）：用色大胆，抓住了核心几何特征，再添一点细节就呼之欲出了！`,
+     `AI 鉴画官（${stage}）：这几笔灵魂勾勒很有神韵，猜词队友注意观察主体轮廓！`,
     ];
     return {
      guess:`疑似「${category}」主题画作`,
@@ -195,8 +196,8 @@ export function createJevJudge(config:Config,db:DatabaseSync,fetchImpl?:typeof f
     const similarity=Number.isFinite(rawScore)?Math.min(100,Math.max(15,Math.round(rawScore*25))):fallbackGuess().similarity;
     const category=p.tags[1]||p.tags[0]||'神秘作品';
     return {
-     guess:`${choice} · 锁定「${category}」视觉特征`,
-     comment:`JEV 多模态视觉判定【${choice}】（传神度 ${similarity}%）：${hasImage?'已通过多模态视觉读取画布图像，':'已分析画板笔触，'}主体轮廓指向「${category}」，快结合特征猜词吧！`,
+     guess:`${choice} · 锁定「${category}」特征`,
+     comment:`AI 鉴画官【${choice}】（传神度 ${similarity}%）：画作主体轮廓指向「${category}」，快结合特征猜词吧！`,
      confidence:Number.isFinite(conf)?Math.max(0,Math.min(1,conf)):0.8,
      similarity,
      multimodal:hasImage,

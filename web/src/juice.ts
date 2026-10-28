@@ -27,19 +27,19 @@ export type FloatingFeedbackEvent = {
 const FLOATING_EVENT_NAME = 'turtle:floating-text';
 
 export const DETECTIVE_QUIPS = [
-  '反常之处往往藏着破案钥匙！',
-  '试试先确认死因或人物关系？',
-  '海龟侦探推了推眼镜，觉得事情并不简单。',
-  '排除错误假设，剩下的再离谱也是真相！',
-  '注意汤面里的时间、地点和缺失的主语。',
-  '摸鱼+1，不如再提一个是非问题？',
+  '先画整体几何大轮廓，再添标志性小细节！',
+  '试试用油漆桶一键填色，画面瞬间生动！',
+  '小画家海龟挥了挥画笔，觉得这幅画很有毕加索风范！',
+  '点一下「AI 看画点评」，看看 AI 给这幅画打多少分！',
+  '留意画题提示里的字数和所属分类哦！',
+  '摸鱼+1，不如直接输入你第一眼想到的词条？',
 ] as const;
 
 export const QUICK_QUESTION_TEMPLATES = [
-  { label: '有人死亡吗', text: '故事里有人死亡吗？' },
-  { label: '与职业有关', text: '这和当事人的职业或身份有关吗？' },
-  { label: '存在误会', text: '故事中的人是不是产生了某种误会？' },
-  { label: '有其他人', text: '现场除了提到的人，还有关键的第三者吗？' },
+  { label: '能吃吗', text: '画的这个东西是可以吃的吗？' },
+  { label: '是动物吗', text: '画的是一只动物或生物吗？' },
+  { label: '家里常见吗', text: '这是日常生活里经常能见到的物品吗？' },
+  { label: '比手掌大吗', text: '它的真实体积比人的手掌大吗？' },
 ] as const;
 
 let sharedAudioCtx: AudioContext | null = null;

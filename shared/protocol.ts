@@ -55,8 +55,8 @@ export interface PartyModeInfo {
 }
 
 export const PARTY_MODE_INFO: readonly PartyModeInfo[] = [
-  { id: 'classic', name: '经典你画我猜', subtitle: 'AI 裁判 + JEV 多模态鉴画', description: '画手根据机密题目作画，猜词玩家实时猜词或提问，支持 JEV 多模态视觉识图。' },
-  { id: 'drawful', name: '妙笔生谎 Drawful', subtitle: '全员瞎掰骗票 · 骗票+2分', description: '画手画荒诞长句，其他玩家编造假题目混入真答案，全员盲投。' },
+  { id: 'classic', name: '经典你画我猜', subtitle: '看画抢答 + AI 看画点评', description: '画手根据机密题目作画，猜词玩家实时猜词或提问，支持 AI 看画点评传神度。' },
+  { id: 'drawful', name: '妙笔生谎 Drawful', subtitle: '全员瞎掰骗票 · 骗票+2分', description: '画手画奇趣脑洞题，其他玩家编造假题目混入真答案，全员盲投。' },
   { id: 'doodle-puzzle', name: '猜拆画画', subtitle: '4象限分块合画 + 抓内鬼', description: '4人分块拼图作画，隐藏内鬼「坏坏」暗中破坏，猜词同时投票抓内鬼。' },
   { id: 'pictomania', name: '妙笔神猜', subtitle: '公开16近似词 · 极速抢答', description: '全员公开16个易混淆候选词，同步作画与竞速抢答，越早猜中得分越高。' },
   { id: 'monsdrawsity', name: '怪兽目击者', subtitle: '20秒瞬时记忆 + 口述画像', description: '目击者限时20秒观察猎奇异兽并口述特征，全员还原画像并投票评选最佳画师。' },
@@ -288,6 +288,7 @@ export interface GuessView {
   text: string;
   outcome: Outcome;
   at: number;
+  points?: number;
 }
 
 export interface RevealView {
@@ -322,6 +323,8 @@ export interface RoomView {
   serverNow: number; // 投影时的服务端时间，用于客户端时钟偏差校正
   round: number;
   reveal: RevealView | null; // 仅 phase==='revealed' 时非 null
+  wordCategory?: string;
+  wordLength?: number;
   progress?: ProgressView | null;
   drawerKey?: string | null; // 当前主画手玩家 key
   strokes?: CanvasStroke[];  // 当前画板笔触列表（重连全量同步）
@@ -344,7 +347,7 @@ export interface ClientToServer {
   'room:kick': (p: { playerKey: string }, ack: (r: Ack) => void) => void;
   'game:start': (p: { puzzleId?: string }, ack: (r: Ack) => void) => void; // 无 puzzleId 则随机（排除本房已玩）
   'q:ask': (p: { text: string }, ack: (r: Ack<{ id: string }>) => void) => void;
-  'guess:submit': (p: { text: string }, ack: (r: Ack<{ id: string }>) => void) => void;
+  'guess:submit': (p: { text: string; round: number }, ack: (r: Ack<{ id: string }>) => void) => void;
   'hint:show': (ack: (r: Ack) => void) => void;
   'surface:highlight': (p: HighlightRequest, ack: (r: Ack) => void) => void;
   'surface:unhighlight': (p: RemoveHighlightRequest, ack: (r: Ack) => void) => void;

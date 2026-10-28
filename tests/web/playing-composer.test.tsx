@@ -1,179 +1,278 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CandyProvider } from 'candy-ui';
 import { DEFAULT_SETTINGS } from '../../shared/protocol';
-import type { RoomView } from '../../shared/protocol';
-const fake = vi.hoisted(() => ({ ask: vi.fn().mockReturnValue(Promise.resolve({ id: 'q-1' })), hint: vi.fn(), highlight: vi.fn().mockResolvedValue(undefined), removeHighlight: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('../../web/src/socket', () => ({ actions: fake }));
+import type { CanvasStroke, RoomView, StrokeInput } from '../../shared/protocol';
+const fake = vi.hoisted(() => ({
+  guess: vi.fn(), ask: vi.fn(), hint: vi.fn(), drawerWord: vi.fn(), stroke: vi.fn(),
+  clearCanvas: vi.fn(), undoStroke: vi.fn(), start: vi.fn(), kick: vi.fn(),
+}));
+vi.mock('../../web/src/socket', () => ({ actions: fake, updateDeviceModality: vi.fn() }));
 import { PlayingRoom } from '../../web/src/PlayingRoom';
+import { DrawingCanvas } from '../../web/src/DrawingCanvas';
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
-const room: RoomView = { code: 'ABC234', phase: 'playing', hostKey: 'me', settings: DEFAULT_SETTINGS, players: [{ key: 'me', name: '我', online: true, isHost: true, asked: 0, guesses: 0, pending: false }], puzzle: null, log: [], guesses: [], highlights: [], hints: [], hintCount: 0, sharedUsed: 0, turnKey: null, turnDeadline: null, turnRemainingMs: null, serverNow: 1000, round: 1, reveal: null };
-const view = (state = room) => <CandyProvider><PlayingRoom room={state} selfKey="me" disabled={false} onLeave={() => {}} onInvite={async () => {}} onGuess={() => {}} onReveal={() => {}} /></CandyProvider>;
-it('对局汤面接入共享标记，输入区显示提问倒计时', () => {
-  const state: RoomView = { ...room, settings: { ...room.settings, turnMode: 'turns' }, turnKey: 'me', turnDeadline: 91000, highlights: [{ id: 'h-1', start: 0, end: 2, playerKey: 'me', playerName: '我' }], puzzle: { id: 'p', title: '题', surface: '一位侦探', difficulty: 1, tags: [], nsfl: false, hintCount: 0, goodRate: null, tier: 'none', funny: 0, ratings: 0, plays: 0, solves: 0, sourceKey: 'test', source: { key: 'test', repo: '', url: '', license: 'MIT' } } };
-  const { container } = render(view(state));
-  expect(container.querySelector('.shared-story-surface mark')?.textContent).toBe('一位');
-  const timer = screen.getByRole('timer', { name: '提问倒计时' });
-  expect(timer.textContent).toContain('90 秒');
-  expect(container.querySelector('.playing-composer')?.contains(timer)).toBe(true);
+beforeEach(() => {
+  fake.guess.mockResolvedValue({ id: 'g-1' });
+  fake.drawerWord.mockResolvedValue({ word: '西瓜', category: '食物', hints: ['绝不能显示的提示'], roleHint: '绝不能显示的角色描述' });
+  fake.stroke.mockResolvedValue(undefined);
+  fake.clearCanvas.mockResolvedValue(undefined);
+  fake.undoStroke.mockResolvedValue(undefined);
 });
-it('问答记录显示接近程度和实际加分，输入区显示永久积分', () => {
-  render(view({ ...room, players: room.players.map(p => ({ ...p, roundPoints: 8, totalPoints: 28 })), log: [{ id: 'q-score', playerKey: 'me', playerName: '我', text: '是为了治好打嗝吗？', at: 1000, verdict: '是', proximity: 75, points: 8 }] }));
-  expect(screen.getByRole('log').textContent).toContain('接近程度 75%');
-  expect(screen.getByRole('log').textContent).toContain('+8 积分');
-  expect(screen.getByText('永久积分 28')).toBeTruthy();
-  expect(screen.getByText(/本题 8分 · 永久 28分/)).toBeTruthy();
-});
-it('等待其他玩家时输入框不被遮挡且可先打字存草稿，按钮提示等待且轮到自己后可直接发送', () => {
-  const turns = { ...room, settings: { ...room.settings, turnMode: 'turns' as const }, turnKey: 'me', players: [...room.players, { ...room.players[0], key: 'other', name: '小林', isHost: false }] };
-  const { rerender, container } = render(view({ ...turns, turnKey: 'other' }));
-  const input = screen.getByLabelText('你的问题') as HTMLTextAreaElement;
-  expect(input.disabled).toBe(false);
-  expect(input.placeholder).toContain('轮到 小林 提问');
-  expect(container.textContent).toContain('等待 小林 提问（可先输入草稿）');
-  const button = screen.getByRole('button', { name: '提问 →' });
-  expect(button.textContent).toContain('等待 小林');
-  expect(button.hasAttribute('disabled')).toBe(true);
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
+const room: RoomView = {
+  code: 'ABC234', phase: 'playing', hostKey: 'me', drawerKey: 'other', settings: DEFAULT_SETTINGS,
+  players: [
+    { key: 'me', name: '我', online: true, isHost: true, asked: 0, guesses: 0, pending: false, device: { kind: 'desktop', os: 'macOS', browser: 'Chrome', label: 'macOS · Chrome' } },
+    { key: 'other', name: '小林', online: true, isHost: false, asked: 0, guesses: 0, pending: false },
+  ],
+  puzzle: null, log: [], guesses: [], highlights: [], hints: [], hintCount: 0, sharedUsed: 0,
+  turnKey: null, turnDeadline: null, turnRemainingMs: null, serverNow: 1000, round: 1, reveal: null,
+};
+const view = (state = room, disabled = false, onNext = vi.fn()) => <CandyProvider><PlayingRoom room={state} selfKey="me" disabled={disabled} onLeave={() => {}} onInvite={async () => {}} onNext={onNext} /></CandyProvider>;
+const input = () => screen.getByLabelText('猜词答案') as HTMLTextAreaElement;
 
-  // 玩家在等待他人时自由打字存草稿
-  fireEvent.change(input, { target: { value: '我的预存问题' } });
-  expect(input.value).toBe('我的预存问题');
-  fireEvent.keyDown(input, { key: 'Enter' });
-  expect(fake.ask).not.toHaveBeenCalled();
-
-  // 轮到自己提问
-  rerender(view(turns));
-  expect(input.disabled).toBe(false);
-  expect(input.value).toBe('我的预存问题');
-  expect(button.textContent).toBe('提问');
-  expect(button.hasAttribute('disabled')).toBe(false);
-  fireEvent.keyDown(input, { key: 'Enter' });
-  expect(fake.ask).toHaveBeenCalledWith('我的预存问题');
-});
-it('点击发送后焦点返回输入框，判定期间可写下一问但不能重复发送', async () => {
-  let resolve!: () => void;
-  fake.ask.mockReturnValue(new Promise<void>(done => { resolve = done; }));
-  const { rerender } = render(view());
-  const input = screen.getByLabelText('你的问题') as HTMLTextAreaElement;
-  fireEvent.change(input, { target: { value: '第一问' } });
-  const send = screen.getByRole('button', { name: '提问 →' });
-  send.focus(); fireEvent.click(send);
-  expect(document.activeElement).toBe(input);
-  expect(input.value).toBe('');
-  rerender(view({ ...room, players: [{ ...room.players[0], pending: true, asked: 1 }] }));
-  expect(input.disabled).toBe(false);
-  fireEvent.change(input, { target: { value: '第二问草稿' } });
-  fireEvent.keyDown(input, { key: 'Enter' });
-  expect(fake.ask).toHaveBeenCalledTimes(1);
-  await act(async () => { resolve(); });
-  rerender(view({ ...room, players: [{ ...room.players[0], asked: 1, pending: false }] }));
-  expect(input.value).toBe('第二问草稿');
-  expect(send.hasAttribute('disabled')).toBe(false);
-});
-it('判定失败不覆盖已经写好的下一问，中文输入法回车不发送', async () => {
-  let reject!: (error: Error) => void;
-  fake.ask.mockReturnValue(new Promise<void>((_, fail) => { reject = fail; }));
+it('Enter 直接发送猜词，不使用旧提问接口，成功后清空并保留焦点', async () => {
   render(view());
-  const input = screen.getByLabelText('你的问题') as HTMLTextAreaElement;
-  fireEvent.change(input, { target: { value: '中文第一问' } });
-  fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+  fireEvent.change(input(), { target: { value: '  西瓜  ' } });
+  await act(async () => { fireEvent.keyDown(input(), { key: 'Enter' }); });
+  expect(fake.guess).toHaveBeenCalledWith('西瓜', 1);
   expect(fake.ask).not.toHaveBeenCalled();
-  fireEvent.keyDown(input, { key: 'Enter' });
-  expect(document.activeElement).toBe(input);
-  fireEvent.change(input, { target: { value: '保留新草稿' } });
-  await act(async () => { reject(Error('判定失败')); });
-  expect(input.value).toBe('保留新草稿');
+  expect(input().value).toBe('');
+  expect(document.activeElement).toBe(input());
 });
-it('本局操作统一按钮尺寸，推理期间下一题禁用', () => {
-  render(view({ ...room, hintCount: 3 }));
-  const group = screen.getByRole('group', { name: '本局操作' });
-  const hint = screen.getByRole('button', { name: '公开提示 (3)' });
-  const guess = screen.getByRole('button', { name: '提交真相' });
-  const next = screen.getByRole('button', { name: '下一题' });
-  expect(group.contains(hint) && group.contains(guess) && group.contains(next)).toBe(true);
-  for (const button of [hint, guess, next]) {
-    expect(button.classList.contains('candy-btn-sm')).toBe(true);
-  }
-  expect(next.classList.contains('playing-next-action')).toBe(true);
-  expect(next.hasAttribute('disabled')).toBe(true);
+
+it('发送期间可写草稿，阻止重复提交；成功回执不覆盖新草稿', async () => {
+  let resolve!: () => void;
+  fake.guess.mockReturnValueOnce(new Promise<void>(done => { resolve = done; }));
+  const { rerender } = render(view());
+  fireEvent.change(input(), { target: { value: '苹果' } });
+  fireEvent.click(screen.getByRole('button', { name: '发送猜词' }));
+  expect(document.activeElement).toBe(input());
+  expect(input().value).toBe('苹果');
+  fireEvent.change(input(), { target: { value: '西瓜' } });
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(fake.guess).toHaveBeenCalledTimes(1);
+  await act(async () => { resolve(); });
+  expect(input().value).toBe('西瓜');
+  rerender(view({ ...room, players: room.players.map(player => ({ ...player, pending: player.key === 'me' })) }));
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(fake.guess).toHaveBeenCalledTimes(1);
+  expect(input().disabled).toBe(false);
 });
-it('非房主不显示下一题，也可开启全员共享提示', () => {
-  render(view({ ...room, hostKey: 'other', hintCount: 3 }));
-  expect(screen.queryByRole('button', { name: '下一题' })).toBeNull();
-  expect(screen.getByRole('button', { name: '公开提示 (3)' }).hasAttribute('disabled')).toBe(false);
-  expect(screen.getByRole('button', { name: '提交真相' }).hasAttribute('disabled')).toBe(false);
+
+it('发送失败保留原始文本并显示错误，可以重试', async () => {
+  fake.guess.mockRejectedValueOnce(Error('网络已断开'));
+  render(view());
+  fireEvent.change(input(), { target: { value: '西瓜' } });
+  await act(async () => { fireEvent.keyDown(input(), { key: 'Enter' }); });
+  expect(input().value).toBe('西瓜');
+  expect(screen.getByText('网络已断开')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '发送猜词' }).hasAttribute('disabled')).toBe(false);
+  await act(async () => { fireEvent.keyDown(input(), { key: 'Enter' }); });
+  expect(fake.guess).toHaveBeenCalledTimes(2);
 });
-it('其他玩家开启提示后自动切换提示标签并弹窗，同一通知不会重复出现', () => {
-  const { rerender } = render(view({ ...room, hintCount: 2 }));
-  fireEvent.click(screen.getByRole('button', { name: /已排除/ }));
-  const opened: RoomView = { ...room, hintCount: 2, hints: ['公开线索'], hintAnnouncement: { id: 'hint-1', round: 1, index: 1, playerKey: 'other', playerName: '小林' } };
-  rerender(view(opened));
-  expect(screen.getByRole('button', { name: '提示 (1)' }).getAttribute('aria-pressed')).toBe('true');
-  expect(screen.getByRole('dialog').textContent).toContain('小林 开启了提示');
-  expect(screen.getByRole('dialog').textContent).toContain('公开线索');
-  fireEvent.click(screen.getByRole('button', { name: '知道了' }));
-  rerender(view({ ...opened, progress: { score: 25, status: '初见端倪' } }));
+
+it('失败回执不覆盖新草稿；中文输入法和 Shift+Enter 不发送', async () => {
+  let reject!: (error: Error) => void;
+  fake.guess.mockReturnValueOnce(new Promise<void>((_, fail) => { reject = fail; }));
+  render(view());
+  fireEvent.change(input(), { target: { value: '苹果' } });
+  fireEvent.keyDown(input(), { key: 'Enter', isComposing: true });
+  fireEvent.keyDown(input(), { key: 'Enter', shiftKey: true });
+  expect(fake.guess).not.toHaveBeenCalled();
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  fireEvent.change(input(), { target: { value: '保留新草稿' } });
+  await act(async () => { reject(Error('发送失败')); });
+  expect(input().value).toBe('保留新草稿');
+});
+
+it('断线、揭晓、画手和旁观者不能发送猜词', async () => {
+  const { rerender } = render(view(room, true));
+  fireEvent.change(input(), { target: { value: '苹果' } });
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(input().disabled).toBe(true);
+  rerender(view({ ...room, phase: 'revealed' }));
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(input().disabled).toBe(true);
+  await act(async () => { rerender(view({ ...room, drawerKey: 'me' })); });
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(input().disabled).toBe(true);
+  rerender(view({ ...room, players: room.players.filter(player => player.key !== 'me') }));
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  expect(input().disabled).toBe(true);
+  expect(fake.guess).not.toHaveBeenCalled();
+});
+
+it('旧轮次失败不会恢复文本或错误到新轮次', async () => {
+  let reject!: (error: Error) => void;
+  fake.guess.mockReturnValueOnce(new Promise<void>((_, fail) => { reject = fail; }));
+  const { rerender } = render(view());
+  fireEvent.change(input(), { target: { value: '苹果' } });
+  fireEvent.keyDown(input(), { key: 'Enter' });
+  rerender(view({ ...room, round: 2 }));
+  expect(input().value).toBe('');
+  await act(async () => { reject(Error('旧轮次错误')); });
+  expect(input().value).toBe('');
+  expect(screen.queryByText('旧轮次错误')).toBeNull();
+});
+
+it('只显示猜词记录和设备标签，不渲染题面、线索、提问和进度', () => {
+  const { container } = render(view({
+    ...room, hints: ['不应展示的线索'], log: [{ id: 'q', playerKey: 'other', playerName: '小林', text: '不应展示的提问', at: 1, verdict: '是' }],
+    guesses: [
+      { id: 'g', playerKey: 'other', playerName: '小林', text: '苹果', at: 2, outcome: '还没猜对' },
+      { id: 'g-win', playerKey: 'me', playerName: '我', text: '西瓜', at: 3, outcome: '破解成功', points: 12 },
+    ],
+  }));
+  expect(screen.getByRole('log').textContent).toContain('苹果');
+  expect(screen.getByRole('log').textContent).toContain('猜对了');
+  expect(screen.getByRole('log').textContent).toContain('+12 分');
+  expect(screen.getByText('macOS · Chrome')).toBeTruthy();
+  expect(container.textContent).not.toMatch(/不应展示|提问|提示|JEV|AI|海龟汤|线索板|推理进度/);
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(screen.getByRole('form', { name: '发送猜词' }).contains(input())).toBe(true);
+});
+
+it('揭晓答案在画板下方展示；只有房主能开始下一轮，不堆叠弹窗', () => {
+  const revealed: RoomView = { ...room, phase: 'revealed', reveal: { bottom: '西瓜', hints: ['不应显示'], winnerName: '我', reason: 'solved' } };
+  const onNext = vi.fn();
+  const { rerender } = render(view(revealed, false, onNext));
+  expect(screen.getByText('西瓜')).toBeTruthy();
+  expect(screen.queryByRole('dialog')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '下一轮' }));
+  expect(onNext).toHaveBeenCalledTimes(1);
+  rerender(view({ ...revealed, hostKey: 'other' }));
+  expect(screen.queryByRole('button', { name: '下一轮' })).toBeNull();
+  expect(screen.getByText('等待房主开始下一轮')).toBeTruthy();
+});
+
+it('旁观者仅看到公开类别和字数，从不请求私密题词', () => {
+  render(view({ ...room, wordCategory: '食物', wordLength: 2 }));
+  expect(screen.getByText('食物 · 2 字')).toBeTruthy();
+  expect(fake.drawerWord).not.toHaveBeenCalled();
+  expect(screen.queryByText(/题词：/)).toBeNull();
+  expect(screen.queryByRole('toolbar')).toBeNull();
+  expect(screen.getByLabelText('同步绘画画布').getAttribute('width')).toBe('800');
+  expect(screen.getByLabelText('同步绘画画布').getAttribute('height')).toBe('500');
+});
+
+it('画手仅显示授权私密词语，不显示私密提示或角色描述；身份变化清除旧响应', async () => {
+  let resolve!: (word: { word: string; category: string; hints: string[] }) => void;
+  fake.drawerWord.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  const { rerender, container } = render(view({ ...room, drawerKey: 'me' }));
+  expect(fake.drawerWord).toHaveBeenCalledTimes(1);
+  rerender(view(room));
+  await act(async () => { resolve({ word: '西瓜', category: '食物', hints: ['绝不能显示'] }); });
+  expect(container.textContent).not.toContain('西瓜');
+  await act(async () => { rerender(view({ ...room, round: 2, drawerKey: 'me' })); });
+  expect(screen.getByText('题词：西瓜')).toBeTruthy();
+  expect(container.textContent).not.toMatch(/绝不能显示|内鬼|目击者|AI/);
+});
+
+it('清空画板需要明确确认，取消不清空；撤销保留独立操作', async () => {
+  const state: RoomView = { ...room, drawerKey: 'me', strokes: [{ id: 's', tool: 'pen', color: '#10234b', size: 8, points: [{ x: 1, y: 1 }], playerKey: 'me', playerName: '我', at: 1 }] };
+  await act(async () => { render(view(state)); });
+  fireEvent.click(screen.getByRole('button', { name: '清空画板' }));
+  expect(fake.clearCanvas).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '取消' }));
+  expect(fake.clearCanvas).not.toHaveBeenCalled();
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '撤销上一笔' })); });
+  expect(fake.undoStroke).toHaveBeenCalledWith(1);
+  fireEvent.click(screen.getByRole('button', { name: '清空画板' }));
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '确认清空' })); });
+  expect(fake.clearCanvas).toHaveBeenCalledWith(1);
   expect(screen.queryByRole('dialog')).toBeNull();
 });
-it.each(['使用提示', '公开提示 (3)'])('%s 成功后切换到提示标签', async (name) => {
-  let resolve!: () => void;
-  fake.hint.mockReturnValue(new Promise<void>(done => { resolve = done; }));
-  const { rerender } = render(view({ ...room, hintCount: 3 }));
-  fireEvent.click(screen.getByRole('button', { name: /已排除/ }));
-  fireEvent.click(screen.getByRole('button', { name }));
-  expect(fake.hint).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole('button', { name: /已排除/ }).getAttribute('aria-pressed')).toBe('true');
-  await act(async () => { resolve(); });
-  rerender(view({ ...room, hintCount: 3, hints: ['新公开的线索'] }));
-  expect(screen.getByRole('button', { name: '提示 (1)' }).getAttribute('aria-pressed')).toBe('true');
-  expect(screen.getByText('新公开的线索')).toBeTruthy();
-});
-it('使用提示失败时保留当前标签', async () => {
-  fake.hint.mockRejectedValue(Error('提示失败'));
-  render(view({ ...room, hintCount: 3 }));
-  fireEvent.click(screen.getByRole('button', { name: /已排除/ }));
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '使用提示' })); });
-  expect(screen.getByRole('button', { name: /已排除/ }).getAttribute('aria-pressed')).toBe('true');
-  expect(screen.getByRole('button', { name: '提示 (0)' }).getAttribute('aria-pressed')).toBe('false');
-});
-it('仅自己的提问显示复制按钮，汤面展示大方向标签', async () => {
-  render(view({
-    ...room,
-    puzzle: {
-      id: 'p-supernatural', title: '列车怪谈', surface: '车厢里的人', difficulty: 3,
-      tags: ['超自然', '诡异'], nsfl: false, hintCount: 3, goodRate: null, tier: 'none',
-      funny: 0, ratings: 0, plays: 0, solves: 0, sourceKey: 'test',
-      source: { key: 'test', repo: '', url: '', license: 'MIT' }
-    },
-    log: [
-      { id: 'q-mine', playerKey: 'me', playerName: '我', text: '我的问题？', at: 1000, verdict: '是' },
-      { id: 'q-other', playerKey: 'other', playerName: '小林', text: '别人的问题？', at: 1001, verdict: '不是' }
-    ]
-  }));
-  expect(screen.getByText('超自然')).toBeTruthy();
-  const copyButtons = screen.getAllByRole('button', { name: '复制问题' });
-  expect(copyButtons).toHaveLength(1);
-});
-it('拦截本局重复提问与连点重发，不重复调用 actions.ask', async () => {
-  const stateWithLog: RoomView = {
-    ...room,
-    log: [{ id: 'q-1', playerKey: 'other', playerName: '小林', text: '他死了吗？', at: 1000, verdict: '是' }],
-  };
-  render(view(stateWithLog));
-  const input = screen.getByLabelText('你的问题') as HTMLTextAreaElement;
-  fireEvent.change(input, { target: { value: '他死了吗' } });
-  fireEvent.keyDown(input, { key: 'Enter' });
-  expect(fake.ask).not.toHaveBeenCalled();
-  expect(input.value).toBe('他死了吗');
 
-  let resolveAsk!: (val: { id: string }) => void;
-  fake.ask.mockImplementationOnce(() => new Promise(r => { resolveAsk = r; }));
-  fireEvent.change(input, { target: { value: '全新问题' } });
-  fireEvent.keyDown(input, { key: 'Enter' });
-  fireEvent.keyDown(input, { key: 'Enter' });
-  expect(fake.ask).toHaveBeenCalledTimes(1);
-  await act(async () => { resolveAsk({ id: 'q-2' }); });
+it('只有当前画手可发送带压力的归一化笔触，取消笔触不发送', async () => {
+  const { rerender } = render(<CandyProvider><DrawingCanvas room={room} selfKey="me" disabled={false} /></CandyProvider>);
+  const canvas = screen.getByLabelText('同步绘画画布');
+  const pointer = (type: string, x: number, y: number, pressure = 0.75) => {
+    const event = new Event(type, { bubbles: true });
+    Object.defineProperties(event, { pointerId: { value: 1 }, button: { value: 0 }, clientX: { value: x }, clientY: { value: y }, pressure: { value: pressure }, pointerType: { value: 'mouse' } });
+    fireEvent(canvas, event);
+  };
+  pointer('pointerdown', 200, 125); pointer('pointerup', 400, 250);
+  expect(fake.stroke).not.toHaveBeenCalled();
+  await act(async () => { rerender(<CandyProvider><DrawingCanvas room={{ ...room, drawerKey: 'me' }} selfKey="me" disabled={false} /></CandyProvider>); });
+  pointer('pointerdown', 200, 125); pointer('pointermove', 300, 200); pointer('pointerup', 400, 250);
+  expect(fake.stroke).toHaveBeenCalledWith(expect.objectContaining({ round: 1, tool: 'pen', points: [{ x: 250, y: 250, p: 0.75 }, { x: 375, y: 400, p: 0.75 }, { x: 500, y: 500, p: 0.75 }] }));
+  pointer('pointerdown', 200, 125); pointer('pointercancel', 400, 250);
+  expect(fake.stroke).toHaveBeenCalledTimes(1);
+});
+
+
+it.each(['ack-first', 'broadcast-first'] as const)('eraser stays visible without double replay when %s', async order => {
+  let acknowledge!: (stroke: CanvasStroke) => void;
+  fake.stroke.mockReturnValueOnce(new Promise<CanvasStroke>(resolve => { acknowledge = resolve; }));
+  const state: RoomView = { ...room, drawerKey: 'me', strokes: [] };
+  const draw = (state: RoomView) => <CandyProvider><DrawingCanvas room={state} selfKey="me" disabled={false} /></CandyProvider>;
+  const { rerender } = render(draw(state));
+  const canvas = screen.getByLabelText('同步绘画画布') as HTMLCanvasElement;
+  const paint: string[] = [];
+  const stack: string[] = [];
+  const ctx = {
+    globalCompositeOperation: 'source-over', fillStyle: '',
+    save() { stack.push(this.globalCompositeOperation); },
+    restore() { this.globalCompositeOperation = stack.pop()!; },
+    clearRect() { paint.length = 0; }, fillRect: vi.fn(),
+    beginPath: vi.fn(), moveTo: vi.fn(), quadraticCurveTo: vi.fn(), closePath: vi.fn(), arc: vi.fn(),
+    fill() { paint.push(this.globalCompositeOperation === 'destination-out' ? 'erase' : this.fillStyle); },
+  };
+  Object.defineProperty(canvas, '__mockCanvasCtx', { value: ctx });
+  vi.spyOn(canvas, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+  const pointer = (type: string, x: number) => {
+    const event = new Event(type, { bubbles: true });
+    Object.defineProperties(event, { pointerId: { value: 1 }, button: { value: 0 }, clientX: { value: x }, clientY: { value: 100 }, pressure: { value: 0.5 }, pointerType: { value: 'mouse' } });
+    fireEvent(canvas, event);
+  };
+  fireEvent.click(screen.getByRole('button', { name: '橡皮擦' }));
+  pointer('pointerdown', 100.123); pointer('pointermove', 200.456); pointer('pointerup', 300.789);
+  expect(paint).toEqual(['erase']);
+  const payload = fake.stroke.mock.calls[0]![0] as StrokeInput;
+  const accepted: CanvasStroke = {
+    ...payload, id: 'accepted-eraser', playerKey: 'me', playerName: '我', at: 1,
+    points: payload.points.map(point => ({ ...point, x: Math.round(point.x * 10) / 10, y: Math.round(point.y * 10) / 10 })),
+  };
+  const laterPen: CanvasStroke = { id: 'later-pen', tool: 'pen', color: '#ff0000', size: 8, points: [{ x: 100, y: 100 }], playerKey: 'me', playerName: '我', at: 2 };
+  if (order === 'ack-first') {
+    await act(async () => { acknowledge(accepted); });
+    expect(paint).toEqual(['erase']);
+    rerender(draw({ ...state, strokes: [accepted, laterPen] }));
+  } else {
+    rerender(draw({ ...state, strokes: [accepted, laterPen] }));
+    expect(paint).toEqual(['erase', '#ff0000']);
+    await act(async () => { acknowledge(accepted); });
+  }
+  expect(paint).toEqual(['erase', '#ff0000']);
+  // After authoritative removal an acknowledged eraser must never resurrect.
+  rerender(draw({ ...state, strokes: [laterPen] }));
+  expect(paint).toEqual(['#ff0000']);
+});
+
+it('late stroke acknowledgements never repaint a previous round', async () => {
+  let acknowledge!: (stroke: CanvasStroke) => void;
+  fake.stroke.mockReturnValueOnce(new Promise<CanvasStroke>(resolve => { acknowledge = resolve; }));
+  const state: RoomView = { ...room, drawerKey: 'me', strokes: [] };
+  const draw = (state: RoomView) => <CandyProvider><DrawingCanvas room={state} selfKey="me" disabled={false} /></CandyProvider>;
+  const { rerender } = render(draw(state));
+  const canvas = screen.getByLabelText('同步绘画画布') as HTMLCanvasElement;
+  const clear = vi.fn();
+  const ctx = { save: vi.fn(), restore: vi.fn(), clearRect: clear, fillRect: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), quadraticCurveTo: vi.fn(), closePath: vi.fn(), arc: vi.fn(), fill: vi.fn() };
+  Object.defineProperty(canvas, '__mockCanvasCtx', { value: ctx });
+  vi.spyOn(canvas, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+  const pointer = (type: string) => {
+    const event = new Event(type, { bubbles: true });
+    Object.defineProperties(event, { pointerId: { value: 1 }, button: { value: 0 }, clientX: { value: 100 }, clientY: { value: 100 }, pressure: { value: 0.5 } });
+    fireEvent(canvas, event);
+  };
+  pointer('pointerdown'); pointer('pointerup');
+  rerender(draw({ ...state, round: 2 }));
+  clear.mockClear();
+  const payload = fake.stroke.mock.calls[0]![0] as StrokeInput;
+  await act(async () => { acknowledge({ ...payload, id: 'old-round', playerKey: 'me', playerName: '我', at: 1 }); });
+  expect(clear).not.toHaveBeenCalled();
 });

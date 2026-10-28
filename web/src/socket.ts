@@ -97,13 +97,16 @@ function request<T>(send: (ack: (result: Ack<T>) => void) => void, onTimeoutFall
   });
 }
 
-function submitDedup(kind: 'q:ask' | 'guess:submit', text: string): Promise<{ id: string }> {
+function submitDedup(kind: 'q:ask' | 'guess:submit', text: string, round?: number): Promise<{ id: string }> {
   const norm = normalizeText(text);
-  const key = `${kind}:${norm}`;
+  const key = `${kind}:${round ?? ''}:${norm}`;
   const existing = inflightSubmits.get(key);
   if (existing) return existing;
   const task = request<{ id: string }>(
-    ack => socket.emit(kind, { text }, ack),
+    ack => {
+      if (kind === 'guess:submit') socket.emit(kind, { text, round: round ?? getSnapshot().room?.round ?? 0 }, ack);
+      else socket.emit(kind, { text }, ack);
+    },
     () => {
       const room = getSnapshot().room;
       const selfKey = identity?.playerKey;
@@ -127,7 +130,7 @@ export const actions = {
   kick: (playerKey: string) => request<undefined>(ack => socket.emit('room:kick', { playerKey }, ack)),
   start: (puzzleId?: string) => withLoading('正在准备题目…', () => request<undefined>(ack => socket.emit('game:start', puzzleId ? { puzzleId } : {}, ack))),
   ask: (text: string) => submitDedup('q:ask', text),
-  guess: (text: string) => submitDedup('guess:submit', text),
+  guess: (text: string, round?: number) => submitDedup('guess:submit', text, round),
   hint: () => request<undefined>(ack => socket.emit('hint:show', ack)),
   highlight: (range: HighlightRequest) => request<undefined>(ack => socket.emit('surface:highlight', range, ack)),
   removeHighlight: (highlight: RemoveHighlightRequest) => request<undefined>(ack => socket.emit('surface:unhighlight', highlight, ack)),

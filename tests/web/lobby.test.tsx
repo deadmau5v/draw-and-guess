@@ -22,20 +22,20 @@ it('初次加载和刷新只显示弹窗内部 spinner，保留背景和页面�
   const background = container.querySelector('.game-background');
   const main = container.querySelector('main');
   const dialog = screen.getByRole('dialog');
-  expect(within(dialog).getByText('正在寻找房间…')).toBeTruthy();
+  expect(within(dialog).getByText('正在加载房间…')).toBeTruthy();
   expect(screen.queryByRole('status', { name: '场景加载' })).toBeNull();
   await act(async () => resolve([room]));
-  expect(within(dialog).getByText('小林的房间 · ABC234')).toBeTruthy();
+  expect(within(dialog).getByText('小林 · ABC234')).toBeTruthy();
   fireEvent.click(within(dialog).getByRole('button', { name: '刷新' }));
   expect(rooms).toHaveBeenCalledTimes(2);
-  expect(within(dialog).getByText('正在寻找房间…')).toBeTruthy();
+  expect(within(dialog).getByText('正在加载房间…')).toBeTruthy();
   expect(container.querySelector('.game-background')).toBe(background);
   expect(container.querySelector('main')).toBe(main);
   expect(screen.queryByRole('status', { name: '场景加载' })).toBeNull();
   expect(container.querySelector('.game-loading-overlay')).toBeNull();
   expect(within(dialog).getByRole('button', { name: '刷新' }).hasAttribute('disabled')).toBe(true);
   await act(async () => resolve([]));
-  expect(within(dialog).getByText('暂时没有可加入的房间')).toBeTruthy();
+  expect(within(dialog).getByText('暂无在线房间')).toBeTruthy();
 });
 it('加载失败在弹窗内重试，成功后按真实房间码加入', async () => {
   const rooms = vi.spyOn(api, 'rooms').mockRejectedValueOnce(Error('网络中断')).mockResolvedValueOnce([room]);
@@ -43,7 +43,7 @@ it('加载失败在弹窗内重试，成功后按真实房间码加入', async (
   renderLobby(vi.fn(), join);
   expect(await screen.findByText('网络中断')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: '重试' }));
-  fireEvent.click(await screen.findByRole('button', { name: '加入房间 ABC234' }));
+  fireEvent.click(await screen.findByRole('button', { name: '加入' }));
   expect(join).toHaveBeenCalledWith('ABC234');
   expect(rooms).toHaveBeenCalledTimes(2);
 });

@@ -1,0 +1,100 @@
+/* Core drawing room: layout only; CandyUI owns control and panel appearances. */
+.pictionary-room {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 800px) minmax(256px, 290px);
+  justify-content: center;
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+.pictionary-room .pictionary-sidebar,
+.pictionary-room .pictionary-board,
+.pictionary-room .pictionary-canvas-stage,
+.pictionary-room .pictionary-room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+.pictionary-room .pictionary-meta,
+.pictionary-room .pictionary-canvas-heading,
+.pictionary-room .pictionary-tool-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pictionary-room .pictionary-canvas-heading {
+  min-height: 36px;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #173d5d;
+  box-shadow: 0 4px 12px rgba(9, 44, 96, 0.12);
+}
+.pictionary-room .pictionary-guess-result { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pictionary-room .pictionary-players { min-height: 0; max-height: calc(100dvh - 340px); overflow-y: auto; overflow-wrap: anywhere; }
+.pictionary-room .pictionary-canvas-frame {
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  overflow: hidden;
+  background: #fff;
+}
+.pictionary-room .pictionary-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 8 / 5;
+  touch-action: pan-y;
+  background: #fff;
+}
+.pictionary-room .pictionary-canvas-editable { cursor: crosshair; touch-action: none; }
+.pictionary-room .pictionary-drawing-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.pictionary-room .pictionary-brush-size { display: flex; align-items: center; gap: 8px; flex: 1 1 180px; max-width: 240px; }
+.pictionary-room .pictionary-brush-size > span { flex-shrink: 0; font-size: 12px; }
+.pictionary-room .pictionary-brush-size > :last-child { flex: 1; min-width: 70px; }
+.pictionary-room .pictionary-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 360px;
+  height: min(700px, calc(100dvh - 180px));
+  box-sizing: border-box;
+}
+.pictionary-room .pictionary-chat h2 { margin: 0; font-size: 18px; flex-shrink: 0; }
+.pictionary-room .pictionary-chat-log { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; }
+.pictionary-room .pictionary-guess-text { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pictionary-room .pictionary-composer { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; min-width: 0; }
+.pictionary-room .pictionary-compose-status { margin: 0; font-size: 12px; }
+.pictionary-room .pictionary-reveal { display: flex; flex-direction: column; gap: 10px; }
+.pictionary-room .pictionary-reveal p { margin: 6px 0 0; }
+@media (max-width: 1100px) {
+  .pictionary-room { grid-template-columns: minmax(0, 1fr) 260px; }
+  .pictionary-room .pictionary-sidebar { grid-column: 1 / -1; grid-row: 2; }
+  .pictionary-room .pictionary-players { max-height: 260px; }
+}
+@media (max-width: 720px) {
+  .pictionary-room { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 0; }
+  .pictionary-room .pictionary-board { grid-row: 1; }
+  .pictionary-room .pictionary-chat { grid-row: 2; height: 440px; min-height: 360px; }
+  .pictionary-room .pictionary-sidebar { grid-column: 1; grid-row: 3; }
+  .pictionary-room .pictionary-canvas-heading { font-size: 12px; }
+  .pictionary-room .pictionary-brush-size { max-width: none; }
+}

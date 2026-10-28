@@ -8,8 +8,8 @@ import { GameNotifications } from './GameNotifications';
 import { GameRouteTransition } from './gameNavigation';
 
 export const metadata: Metadata = {
-  title: '你画我猜派对 · 多模态 JEV 联机速写与10大派对玩法',
-  description: '支持压感画板、JEV多模态视觉鉴画、Drawful妙笔生谎、猜拆画画内鬼、妙笔神猜、MonsDRAWsity怪兽目击与传声筒5大变体的多人联机派对游戏',
+  title: '你画我猜 · 好友联机画画猜词',
+  description: '创建或加入房间，轮流画画、看画猜词，回合结束结算得分。',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

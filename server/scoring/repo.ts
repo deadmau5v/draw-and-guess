@@ -35,6 +35,29 @@ export class ScoreRepo {
     }
   }
 
+  /** Atomically credit the first solve and its cooperative drawer award once per round.
+   * No answer text is stored. A restored room uses the same gameId, not a new UUID.
+   */
+  awardRound(input:{roomCode:string;gameId:string;round:number;solver:{key:string;name:string;avatar?:string};drawer?:{key:string;name:string;avatar?:string};points:number}):{solverPoints:number;drawerPoints:number} {
+    if(!input.roomCode||!input.gameId||!Number.isSafeInteger(input.round)||input.round<1||!Number.isInteger(input.points)||input.points<70||input.points>150||!input.solver.key||input.solver.key===input.drawer?.key) throw new RangeError('Invalid round award');
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const prior=this.db.prepare("SELECT 1 FROM round_score_awards WHERE room_code=? AND game_id=? AND round=? AND role='solver'").get(input.roomCode,input.gameId,input.round);
+      if(prior) {this.db.exec('COMMIT');return {solverPoints:0,drawerPoints:0};}
+      const now=Date.now();
+      const credit=(role:'solver'|'drawer',player:{key:string;name:string;avatar?:string},points:number)=>{
+        this.db.prepare('INSERT INTO round_score_awards(room_code,game_id,round,role,player_key,points,created_at) VALUES(?,?,?,?,?,?,?)').run(input.roomCode,input.gameId,input.round,role,player.key,points,now);
+        this.db.prepare(`INSERT INTO player_scores(player_key,name,avatar,points,questions,best_proximity,updated_at)
+          VALUES(?,?,?,?,0,0,?) ON CONFLICT(player_key) DO UPDATE SET name=excluded.name,avatar=excluded.avatar,points=player_scores.points+excluded.points,updated_at=excluded.updated_at`)
+          .run(player.key,player.name,resolveAvatar(player.avatar),points,now);
+      };
+      credit('solver',input.solver,input.points);
+      if(input.drawer) credit('drawer',input.drawer,40);
+      this.db.exec('COMMIT');
+      return {solverPoints:input.points,drawerPoints:input.drawer?40:0};
+    } catch(error) {this.db.exec('ROLLBACK');throw error;}
+  }
+
   playerPoints(key: string): number {
     return Number(this.db.prepare('SELECT points FROM player_scores WHERE player_key=?').get(key)?.points ?? 0);
   }

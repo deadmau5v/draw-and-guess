@@ -1,5 +1,7 @@
 // 状态机仅保存题目 ID 和提示计数；公开题面/提示由 Socket 层投影。
 // 进入 revealed 只设胜者/原因，汤底由调用方查询并 setReveal。
+import { randomUUID } from 'node:crypto';
+import { correctGuessPoints, DRAWER_COOPERATIVE_POINTS } from '../scoring/core.js';
 import { DEFAULT_SETTINGS, LIMITS, PARTY_MODES } from '../../shared/protocol.js';
 import type {
  ErrorCode, RoomView, Settings, QAView, Verdict, GuessView, Outcome, RevealView, RevealReason,
@@ -20,7 +22,7 @@ const PICTOMANIA_POOLS: readonly (readonly string[])[] = [
 ] as const;
 
 const MODE_STAGE_DESC: Record<PartyMode, string> = {
- 'classic': '经典你画我猜：画手根据机密词条作画，猜词玩家实时输入答案或特征提问，支持 JEV 多模态鉴画！',
+ 'classic': '经典你画我猜：画手根据机密词条作画，猜词玩家实时输入答案或特征提问，支持 AI 看画点评！',
  'drawful': '《Drawful》妙笔生谎：画手画出奇葩题目，全员编造以假乱真的假答案骗取选票，骗票 +2 分！',
  'doodle-puzzle': '《猜拆画画》拼图内鬼：四人分块合作画局部，内鬼「坏坏」暗中擦改破坏，既要猜词也要揪出内鬼！',
  'pictomania': '《妙笔神猜》全员狂飙：桌面公开 16 个近似干扰词，所有人边画边抢答，越早猜中得分越高！',
@@ -81,7 +83,7 @@ export class RoomManager {
   this.rooms.set(code,{
    code,phase:'lobby',hostKey:playerKey,settings:{...DEFAULT_SETTINGS},
    players:[{key:playerKey,name:hostName.trim(),avatar:resolveAvatar(avatar),...(dev?{device:dev}:{}),online:false,isHost:true,asked:0,guesses:0,pending:false,socketId:null,offlineAt:this.now()}],
-   puzzleId:null,log:[],guesses:[],highlights:[],hintCount:0,hintsShown:0,sharedUsed:0,turnKey:null,turnDeadline:null,turnRemainingMs:null,serverNow:this.now(),round:0,reveal:null,playedIds:[],winner:null,revealReason:null,offlineAt:this.now(),startedAt:null,progress:{score:0,status:'迷雾重重'},
+   puzzleId:null,log:[],guesses:[],highlights:[],hintCount:0,hintsShown:0,sharedUsed:0,turnKey:null,turnDeadline:null,turnRemainingMs:null,serverNow:this.now(),round:0,reveal:null,playedIds:[],winner:null,revealReason:null,offlineAt:this.now(),startedAt:null,gameId:randomUUID(),secretHolderKeys:[],progress:{score:0,status:'迷雾重重'},
    drawerKey:playerKey,strokes:[],aiGuess:null,
    bluffs:[],truthVotes:[],saboteurKey:null,sabotagedQuadrant:null,accusedVotes:[],candidateWords:[],solvedRankings:[],witnessKey:null,memoryDeadline:null,bestArtistVotes:{},currentFrame:0,totalFrames:4,
   });
@@ -124,19 +126,26 @@ export class RoomManager {
   };
   return ok(undefined);
  }
+ startClassic(code:string,key:string,puzzleId:string):Result {
+  const check=this.host(code,key);if(!check.ok) return check;const r=check.value;
+  if(r.phase==='playing') return fail('BAD_PHASE','游戏正在进行');
+  r.settings={...r.settings,partyMode:'classic',turnMode:'free'};
+  return this.start(code,key,puzzleId,0);
+ }
  start(code:string,key:string,puzzleId:string,hintCount=0):Result {
   const check=this.host(code,key);if(!check.ok) return check;const r=check.value;
   if(r.phase==='playing') return fail('BAD_PHASE','游戏正在进行');
   if(typeof puzzleId!=='string'||!puzzleId.trim()||!Number.isInteger(hintCount)||hintCount<0) return fail('INVALID','题目无效');
   const now=this.now();
   const mode:PartyMode=r.settings.partyMode??'classic';
-  r.puzzleId=puzzleId;r.hintCount=hintCount;r.hintsShown=0;r.log=[];r.guesses=[];r.highlights=[];r.sharedUsed=0;r.reveal=null;r.winner=null;r.revealReason=null;r.phase='playing';r.round++;r.startedAt=now;r.progress={score:0,status:'迷雾重重'};
+  r.puzzleId=puzzleId;r.hintCount=hintCount;r.hintsShown=0;r.log=[];r.guesses=[];r.highlights=[];r.sharedUsed=0;r.reveal=null;r.winner=null;r.revealReason=null;r.phase='playing';r.round++;r.startedAt=now;r.gameId=randomUUID();r.secretHolderKeys=[];r.progress={score:0,status:'迷雾重重'};
   r.strokes=mode==='complement'?buildComplementStarterStrokes(r.round,now):[];
   r.aiGuess=null;
   r.bluffs=[];r.truthVotes=[];r.sabotagedQuadrant=null;r.accusedVotes=[];r.solvedRankings=[];r.bestArtistVotes={};r.currentFrame=0;r.totalFrames=Math.max(4,Math.min(6,r.players.length||4));
   const onlinePlayers=r.players.filter(p=>p.online);
   const pool=onlinePlayers.length?onlinePlayers:r.players;
   r.drawerKey=pool.length?pool[(r.round-1)%pool.length]!.key:key;
+  r.secretHolderKeys=[r.drawerKey];
   if(mode==='doodle-puzzle'&&pool.length>=2) {
    r.saboteurKey=pool[r.round%pool.length]!.key;
   } else {
@@ -162,7 +171,8 @@ export class RoomManager {
  addStroke(code:string,key:string,input:StrokeInput):Result<CanvasStroke> {
   const check=this.player(code,key);if(!check.ok) return check;const {r,p}=check.value;
   if(r.phase!=='playing') return fail('BAD_PHASE','对局期间才能作画');
-  if(input.round!==undefined&&input.round!==r.round) return fail('INVALID','轮次已切换');
+  if(input.round!==r.round) return fail('INVALID','轮次已切换');
+  if(r.drawerKey!==key) return fail('NOT_YOUR_TURN','仅当前画手可作画');
   if(!['pen','eraser','fill','line','rect','circle'].includes(input.tool)) return fail('INVALID','画笔工具无效');
   if(typeof input.color!=='string'||!/^#[0-9a-fA-F]{3,8}$/.test(input.color)) return fail('INVALID','颜色格式无效');
   if(typeof input.size!=='number'||!Number.isFinite(input.size)||input.size<LIMITS.brushSizeMin||input.size>LIMITS.brushSizeMax) return fail('INVALID','画笔粗细无效');
@@ -195,9 +205,9 @@ export class RoomManager {
  undoStroke(code:string,key:string,round?:number):Result {
   const check=this.player(code,key);if(!check.ok) return check;const {r}=check.value;
   if(r.phase!=='playing') return fail('BAD_PHASE','对局期间才能撤销笔触');
-  if(round!==undefined&&round!==r.round) return fail('INVALID','轮次已切换');
+  if(round!==r.round) return fail('INVALID','轮次已切换');
   for(let i=r.strokes.length-1;i>=0;i--) {
-   if(r.strokes[i]!.playerKey===key||r.hostKey===key||r.drawerKey===key) {
+   if(r.strokes[i]!.playerKey===key) {
     r.strokes.splice(i,1);
     return ok(undefined);
    }
@@ -207,14 +217,15 @@ export class RoomManager {
  clearCanvas(code:string,key:string,round?:number):Result {
   const check=this.player(code,key);if(!check.ok) return check;const {r}=check.value;
   if(r.phase!=='playing') return fail('BAD_PHASE','对局期间才能清空画布');
-  if(round!==undefined&&round!==r.round) return fail('INVALID','轮次已切换');
+  if(round!==r.round) return fail('INVALID','轮次已切换');
+  if(key!==r.drawerKey&&key!==r.hostKey) return fail('NOT_YOUR_TURN','仅画手或房主可清空画布');
   r.strokes=[];r.aiGuess=null;
   return ok(undefined);
  }
  advanceFrame(code:string,key:string,round?:number):Result {
   const check=this.player(code,key);if(!check.ok) return check;const {r}=check.value;
   if(r.phase!=='playing') return fail('BAD_PHASE','对局期间才能推进帧');
-  if(round!==undefined&&round!==r.round) return fail('INVALID','轮次已切换');
+  if(round!==r.round) return fail('INVALID','轮次已切换');
   r.currentFrame=(r.currentFrame+1)%Math.max(1,r.totalFrames);
   const online=r.players.filter(p=>p.online);
   if(online.length>1) {
@@ -348,30 +359,48 @@ export class RoomManager {
   const quotaDone=r.settings.quotaMode==='shared'?r.sharedUsed>=r.settings.quota:online.every(p=>p.asked>=r.settings.quota);
   if(quotaDone&&online.every(p=>p.guesses>=r.settings.maxGuesses)) this.end(r,'exhausted');
  }
- beginGuess(code:string,key:string,text:string):Result<GuessView> {
+ markSecretHolder(code:string,key:string):Result {
+  const check=this.player(code,key);if(!check.ok) return check;
+  if(!check.value.r.secretHolderKeys.includes(key)) check.value.r.secretHolderKeys.push(key);
+  return ok(undefined);
+ }
+ beginGuess(code:string,key:string,text:string,round?:number):Result<GuessView> {
   const check=this.player(code,key);if(!check.ok) return check;const {r,p}=check.value;
   if(r.phase!=='playing') return fail('BAD_PHASE','游戏尚未进行');
-  this.expireTurn(r);
+  if(round!==undefined&&round!==r.round) return fail('INVALID','轮次已切换');
+  if(r.drawerKey===key||r.secretHolderKeys.includes(key)||(r.settings.partyMode??'classic')!=='classic') return fail('NOT_YOUR_TURN','看过题词的玩家不能猜词得分');
   if(p.pending) return fail('PENDING','正在判定，请稍候');
-  const clean=text.trim();if(!clean||Array.from(clean).length>LIMITS.guessMax) return fail('INVALID','还原需 1–400 字');
-  if(p.guesses>=r.settings.maxGuesses) return fail('QUOTA_EXCEEDED','猜测次数用尽');
+  const clean=text.trim();if(!clean||Array.from(clean).length>LIMITS.guessMax) return fail('INVALID','猜词需 1–400 字');
+  // No maxGuesses gate: rate limiting and one pending request per player suffice.
   const guess:GuessView={id:`g-${++this.sequence}`,playerKey:key,playerName:p.name,avatar:p.avatar,text:clean,outcome:'判定中',at:this.now()};
-  p.guesses++;p.pending=true;r.guesses.push(guess);this.syncClock(r);return ok({...guess});
+  p.guesses++;p.pending=true;r.guesses.push(guess);return ok({...guess});
  }
- applyOutcome(code:string,guessId:string,outcome:Outcome):Result {
+ guessPoints(code:string,guessId:string):number {
+  const r=this.rooms.get(code),g=r?.guesses.find(g=>g.id===guessId);
+  if(!r||!g||r.phase!=='playing'||r.startedAt===null||r.drawerKey===g.playerKey||r.secretHolderKeys.includes(g.playerKey)||(r.settings.partyMode??'classic')!=='classic') return 0;
+  const wrong=r.guesses.filter(item=>item.playerKey===g.playerKey&&item.id!==g.id&&(item.outcome==='还没猜对'||item.outcome==='接近真相')).length;
+  return correctGuessPoints(r.startedAt,g.at,r.settings.turnSeconds,wrong);
+ }
+ applyOutcome(code:string,guessId:string,outcome:Outcome,credited?:{solverPoints:number;drawerPoints:number}):Result {
   const r=this.rooms.get(code);if(!r) return fail('NOT_FOUND','房间不存在');
   const g=r.guesses.find(g=>g.id===guessId);if(!g) return fail('NOT_FOUND','猜测不存在');
+  if(r.phase!=='playing') return fail('BAD_PHASE','轮次已经结束');
   if(g.outcome!=='判定中'||!['破解成功','接近真相','还没猜对','不确定','出错'].includes(outcome)) return fail('INVALID','判定无效');
+  const points=outcome==='破解成功'?this.guessPoints(code,guessId):0;
+  if(outcome==='破解成功'&&points===0) return fail('NOT_YOUR_TURN','看过题词的玩家不能得分');
   g.outcome=outcome;const p=r.players.find(p=>p.key===g.playerKey);
   if(p) {p.pending=false;if(outcome==='不确定'||outcome==='出错') p.guesses=Math.max(0,p.guesses-1);}
   if(outcome==='破解成功') {
-   const order=r.solvedRankings.length;
-   const pts=order===0?3:order===1?2:1;
-   if(!r.solvedRankings.some(s=>s.playerKey===g.playerKey)) {
-    r.solvedRankings.push({playerKey:g.playerKey,playerName:g.playerName,points:pts,at:this.now()});
-   }
+   const solverPoints=credited?.solverPoints??points,drawerPoints=credited?.drawerPoints??DRAWER_COOPERATIVE_POINTS;
+   Object.assign(g,{points:solverPoints});
+   r.solvedRankings.push({playerKey:g.playerKey,playerName:g.playerName,points:solverPoints,at:this.now()});
+   const drawer=r.players.find(player=>player.key===r.drawerKey);
+   if(drawer&&drawerPoints) r.solvedRankings.push({playerKey:drawer.key,playerName:drawer.name,points:drawerPoints,at:this.now()});
+   for(const other of r.guesses) if(other.outcome==='判定中') other.outcome='出错';
+   for(const player of r.players) player.pending=false;
+   this.end(r,'solved',g.playerName);
   }
-  this.syncClock(r);if(outcome==='破解成功'&&r.phase==='playing') this.end(r,'solved',g.playerName);else this.exhausted(r);return ok(undefined);
+  return ok(undefined);
  }
  setQuestionScore(code:string,id:string,proximity:number|undefined,points:number):Result {
   const r=this.rooms.get(code);if(!r) return fail('NOT_FOUND','房间不存在');
@@ -415,7 +444,7 @@ export class RoomManager {
   if(r.turnKey===key) this.advance(r);
   r.players.splice(index,1);if(!r.players.length){this.rooms.delete(code);return ok(undefined);}
   if(r.hostKey===key) this.transfer(r,(r.players.find(p=>p.online)??r.players[0]!).key);
-  if(r.drawerKey===key) r.drawerKey=(r.players.find(p=>p.online)??r.players[0]!).key;
+  if(r.drawerKey===key) {r.drawerKey=(r.players.find(p=>p.online)??r.players[0]!).key;if(!r.secretHolderKeys.includes(r.drawerKey)) r.secretHolderKeys.push(r.drawerKey);}
   if(r.turnKey===key) r.turnKey=null;
   this.syncClock(r);
   if(r.players.every(p=>!p.online)&&r.offlineAt===null) r.offlineAt=this.now();this.exhausted(r);return ok(undefined);
@@ -442,6 +471,8 @@ export class RoomManager {
    for(const p of r.players) {p.online=false;p.socketId=null;p.pending=false;p.offlineAt??=now;}
    r.offlineAt??=now;
    r.strokes??=[];
+   r.gameId??=randomUUID();
+   r.secretHolderKeys??=r.drawerKey?[r.drawerKey]:[];
    r.drawerKey??=r.hostKey;
    r.aiGuess??=null;
    r.bluffs??=[];
@@ -540,7 +571,7 @@ export class RoomManager {
    }),
    puzzle:null,
    log:r.log,
-   guesses:r.guesses,
+   guesses:r.guesses.map(g=>revealed?g:{...g,text:'已提交猜词'}),
    highlights:r.highlights,
    hints:[],
    hintAnnouncement:r.hintAnnouncement??null,

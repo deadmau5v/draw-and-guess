@@ -11,7 +11,7 @@ import { actions } from './socket';
 import { notify } from './store';
 
 export const PARTY_MODE_META: Record<PartyMode, { title: string; subtitle: string; badge: string }> = {
-  'classic': { title: '经典你画我猜', subtitle: '画手看词作画 · 全员猜词提问 · JEV 多模态鉴画', badge: '经典联机' },
+  'classic': { title: '经典你画我猜', subtitle: '画手看词作画 · 全员猜词提问 · AI 看画点评', badge: '经典联机' },
   'drawful': { title: '《Drawful》妙笔生谎', subtitle: '画怪异题 · 全员编假题目骗票 (+2分) · 混合盲投', badge: '造假骗票流' },
   'doodle-puzzle': { title: '《猜拆画画》拼图内鬼', subtitle: '四人分块拼图 + 内鬼「坏坏」暗中改画 + 投票抓内鬼', badge: '拼图狼人杀' },
   'pictomania': { title: '《妙笔神猜》全员狂飙', subtitle: '公开 16 个近似干扰词 · 边画边极速抢答', badge: '零等待抢答' },

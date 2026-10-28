@@ -3,6 +3,7 @@ import type { PuzzleListQuery, PuzzlePublic, PuzzleSecret, PuzzleSummary, Puzzle
 type Row = Record<string, unknown>;
 export interface GameRecord { id:string; roomCode:string; puzzleId:string; startedAt:number; endedAt:number; outcome:string; winnerName:string|null; log:unknown[] }
 export class PuzzleRepo {
+ private playableIds:Set<string>|null=null;
  rate(puzzleId:string,playerKey:string,score:1|0|-1,funny:boolean):void {
   this.db.prepare(`INSERT INTO ratings(puzzle_id,player_key,score,funny,created_at) VALUES(?,?,?,?,?) ON CONFLICT(puzzle_id,player_key) DO UPDATE SET score=excluded.score,funny=excluded.funny,created_at=excluded.created_at`).run(puzzleId,playerKey,score,Number(funny),Date.now());
  }
@@ -16,8 +17,25 @@ export class PuzzleRepo {
  }
  private readonly db:DatabaseSync;
  constructor(db:DatabaseSync) {this.db=db;}
- count(): number { return Number(this.db.prepare('SELECT count(*) AS n FROM puzzles').get()?.n); }
- private rows(): Row[] { return this.db.prepare(`SELECT p.*, count(r.player_key) AS ratings, coalesce(sum(r.score),0) AS score_sum, coalesce(sum(r.funny),0) AS funny FROM puzzles p LEFT JOIN ratings r ON p.id=r.puzzle_id GROUP BY p.id`).all(); }
+ /** Reconcile only bundled draw-bank rows; preserve all stats/history columns. */
+ reconcilePlayable(seedPuzzles:import('../../shared/protocol.js').SeedPuzzle[]):void {
+  const bundled=seedPuzzles.filter(p=>p.source.key==='draw-bank');if(!bundled.length) return;
+  this.db.exec('BEGIN IMMEDIATE');
+  try {
+   const insert=this.db.prepare(`INSERT INTO puzzles(id,title,surface,bottom,hints,difficulty,tags,nsfl,source,also_in,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(id) DO UPDATE SET title=excluded.title,surface=excluded.surface,bottom=excluded.bottom,hints=excluded.hints,difficulty=excluded.difficulty,tags=excluded.tags,nsfl=excluded.nsfl,source=excluded.source,also_in=excluded.also_in`);
+   for(const p of bundled) {
+    const previous=this.db.prepare('SELECT bottom FROM puzzles WHERE id=?').get(p.id);
+    // Cached judgments belong to the old word, not this ID forever. Derived cache only;
+    // games, ratings, legacy awards and player totals remain untouched.
+    if(previous&&previous.bottom!==p.bottom) this.db.prepare('DELETE FROM judge_cache WHERE puzzle_id=?').run(p.id);
+    insert.run(p.id,p.title,p.surface,p.bottom,JSON.stringify(p.hints),p.difficulty,JSON.stringify(p.tags),Number(p.nsfl),JSON.stringify(p.source),JSON.stringify(p.alsoIn),Date.now());
+   }
+   this.db.exec('COMMIT');this.playableIds=new Set(bundled.map(p=>p.id));
+  } catch(error) {this.db.exec('ROLLBACK');throw error;}
+ }
+ count(): number { return this.rows().length; }
+ private rows(): Row[] { return this.db.prepare(`SELECT p.*, count(r.player_key) AS ratings, coalesce(sum(r.score),0) AS score_sum, coalesce(sum(r.funny),0) AS funny FROM puzzles p LEFT JOIN ratings r ON p.id=r.puzzle_id GROUP BY p.id`).all().filter(r=>this.playableIds===null||this.playableIds.has(String(r.id))); }
  private summary(r:Row): PuzzleSummary {
   const ratings=Number(r.ratings), goodRate=ratings ? Number(r.score_sum)/ratings*0.5+0.5 : null;
   const source=JSON.parse(String(r.source)) as PuzzleSource;
