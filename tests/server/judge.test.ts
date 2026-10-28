@@ -9,7 +9,7 @@ it('无 key 不调用网络',async()=>{const db=openDb(':memory:');seedIfEmpty(d
 it('低置信不缓存，成功阈值降级，问答和还原缓存隔离',async()=>{const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!;const f=vi.fn<typeof fetch>().mockImplementationOnce(async()=>response('是',0.2)).mockImplementationOnce(async()=>response('是',0.3)).mockImplementationOnce(async()=>response('破解成功',0.5)).mockImplementationOnce(async()=>response('破解成功',0.8));const j=createJevJudge(config,db,f);expect((await j.judgeQuestion(p,'相同')).verdict).toBe('不确定');expect((await j.judgeQuestion(p,'相同')).verdict).toBe('不确定');expect((await j.judgeSolution(p,'相同')).outcome).toBe('接近真相');expect((await j.judgeSolution(p,'新猜测')).outcome).toBe('破解成功');expect((await j.judgeSolution(p,'新猜测！')).outcome).toBe('破解成功');expect(f).toHaveBeenCalledTimes(4);expect(j.totalCost()).toBeCloseTo(0.04);db.close();});
 const config={apiKey:'test-only',judgeConfigured:true,model:'typesafe/jev-1.13',judgeThreshold:0.4,solveThreshold:0.55,port:3001,dbPath:':memory:'};
 const response=(choice:string,confidence:number,cost=0.01)=>new Response(JSON.stringify({answers:{verdict:{choice,probabilities:{[choice]:confidence}}},usage:{cost}}));
-it('高置信问答缓存规范化文本并持久化，累计实际调用成本',async()=>{const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!; const f=vi.fn<typeof fetch>().mockImplementation(async()=>response('是',0.9));const j=createJevJudge(config,db,f);expect(await j.judgeQuestion(p,'  HELLO   world？！ ')).toEqual({verdict:'是',confidence:0.9});expect(await j.judgeQuestion(p,'hello world')).toEqual({verdict:'是',confidence:0.9});expect(f).toHaveBeenCalledTimes(1);expect(j.totalCost()).toBe(0.01);expect(await createJevJudge(config,db,f).judgeQuestion(p,'hello world?')).toEqual({verdict:'是',confidence:0.9});expect(f).toHaveBeenCalledTimes(1);db.close();});
+it('无评分的旧 mock 保持返回值，规范化 LRU 命中但 NULL 持久缓存重新判定',async()=>{const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!; const f=vi.fn<typeof fetch>().mockImplementation(async()=>response('是',0.9));const j=createJevJudge(config,db,f);expect(await j.judgeQuestion(p,'  HELLO   world？！ ')).toEqual({verdict:'是',confidence:0.9});expect(await j.judgeQuestion(p,'hello world')).toEqual({verdict:'是',confidence:0.9});expect(f).toHaveBeenCalledTimes(1);expect(j.totalCost()).toBe(0.01);expect(await createJevJudge(config,db,f).judgeQuestion(p,'hello world?')).toEqual({verdict:'是',confidence:0.9});expect(f).toHaveBeenCalledTimes(2);db.close();});
 
 it('evaluateProgress 未配置或空日志优雅回退，有效日志调用 JEV 并转换 0-4 评分为 0-100 百分比',async()=>{
  const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!;
@@ -57,5 +57,64 @@ it('evaluateProgress 未配置或空日志优雅回退，有效日志调用 JEV 
  const fallbackRes=await failingJudge.evaluateProgress(p,[{text:'问1',verdict:'是' as const}]);
  expect(fallbackRes.score).toBeGreaterThan(0);
  expect(fallbackRes.status).toBe('初见端倪');
+ db.close();
+});
+
+it.each([0,3])('提问同时评分 %s 并在 LRU 和 SQLite 保留接近度，不返回汤底解释',async(score)=>{
+ const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!;
+ const f=vi.fn<typeof fetch>().mockImplementation(async()=>new Response(JSON.stringify({answers:{verdict:{choice:'不是',confidence:0.9},proximity:{score,explanation:p.bottom}},usage:{cost:0.02}})));
+ const j=createJevJudge(config,db,f);
+ const result=await j.judgeQuestion(p,'关键因果？');
+ expect(result).toEqual({verdict:'不是',confidence:0.9,proximity:score*25});
+ expect(JSON.stringify(result)).not.toContain(p.bottom);
+ expect(await j.judgeQuestion(p,'关键因果')).toEqual(result);
+ expect(await createJevJudge(config,db,f).judgeQuestion(p,'关键因果')).toEqual(result);
+ expect(f).toHaveBeenCalledTimes(1);expect(j.totalCost()).toBe(0.02);
+ const body=JSON.parse(String(f.mock.calls[0][1]?.body));
+ expect(body.questions.proximity.type).toBe('score');
+ expect(body.questions.proximity.criteria).toHaveLength(5);
+ expect(body.questions.proximity.instructions).toContain('独立');
+ expect(body.questions.proximity.instructions).toContain('因果');
+ expect(db.prepare('SELECT proximity FROM judge_cache WHERE kind=?').get('question')?.proximity).toBe(score*25);
+ db.close();
+});
+
+it('低置信提问没有接近度且不缓存评分',async()=>{
+ const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!;
+ const f=vi.fn<typeof fetch>().mockImplementation(async()=>new Response(JSON.stringify({answers:{verdict:{choice:'是',confidence:0.2},proximity:{score:4}}})));
+ const j=createJevJudge(config,db,f);
+ expect(await j.judgeQuestion(p,'问')).toEqual({verdict:'不确定',confidence:0.2});
+ expect(await j.judgeQuestion(p,'问')).toEqual({verdict:'不确定',confidence:0.2});
+ expect(f).toHaveBeenCalledTimes(2);
+ expect(db.prepare('SELECT COUNT(*) AS count FROM judge_cache').get()?.count).toBe(0);
+ db.close();
+});
+
+it('旧提问 NULL 评分缓存重新同步判定，还原 NULL 缓存继续命中',async()=>{
+ const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!;
+ const insert=db.prepare('INSERT INTO judge_cache(puzzle_id,kind,norm_text,choice,confidence,created_at) VALUES(?,?,?,?,?,?)');
+ insert.run(p.id,'question','旧问','是',0.9,1);insert.run(p.id,'solution','旧还原','破解成功',0.9,1);
+ const f=vi.fn<typeof fetch>().mockImplementation(async()=>new Response(JSON.stringify({answers:{verdict:{choice:'不是',confidence:0.8},proximity:{score:2}}})));
+ const j=createJevJudge(config,db,f);
+ expect(await j.judgeQuestion(p,'旧问?')).toEqual({verdict:'不是',confidence:0.8,proximity:50});
+ expect(await j.judgeSolution(p,'旧还原！')).toEqual({outcome:'破解成功',confidence:0.9});
+ expect(await createJevJudge(config,db,f).judgeQuestion(p,'旧问')).toEqual({verdict:'不是',confidence:0.8,proximity:50});
+ expect(f).toHaveBeenCalledTimes(1);
+ db.close();
+});
+
+it('并发相同提问与进度评估共享在途请求，避免重复判题与重复计费',async()=>{
+ const db=openDb(':memory:');seedIfEmpty(db,[seed]);const p=new PuzzleRepo(db).getSecret(seed.id)!;
+ let resolveDecision!:(res:Response)=>void;
+ const f=vi.fn<typeof fetch>().mockImplementation(()=>new Promise<Response>(r=>{resolveDecision=r;}));
+ const j=createJevJudge(config,db,f);
+ const q1=j.judgeQuestion(p,'他活着吗？');
+ const q2=j.judgeQuestion(p,'  他活着吗  ');
+ expect(f).toHaveBeenCalledTimes(1);
+ resolveDecision(new Response(JSON.stringify({answers:{verdict:{choice:'是',confidence:0.95},proximity:{score:3}},usage:{cost:0.01}})));
+ const [r1,r2]=await Promise.all([q1,q2]);
+ expect(r1).toEqual({verdict:'是',confidence:0.95,proximity:75});
+ expect(r2).toEqual(r1);
+ expect(j.totalCost()).toBe(0.01);
  db.close();
 });

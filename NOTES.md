@@ -1,5 +1,13 @@
 # 实现笔记
 
+## 2026-10-06：共享汤面高亮与轮流提问倒计时（未部署）
+
+- 共享契约新增 `SurfaceHighlight`、`HighlightRequest`、`RemoveHighlightRequest`、`RoomView.highlights` 和 `surface:highlight` / `surface:unhighlight` 事件。仅记录当前公开汤面的 UTF-16 范围和玩家信息；Socket 按公开汤面长度校验范围及代理对边界，不读取或发送汤底。每轮最多100处，拒绝重叠和旧轮次请求，新题清空，全员及重连者同步；房内在线玩家均可取消标记。
+- `Settings.turnSeconds` 默认90，房主在大厅轮流模式可设置15–600秒整数。`RoomView.turnDeadline` / `turnRemainingMs` / `serverNow` 为服务端权威截止时间、暂停余量及校时信息。Socket 每250ms检查到期并只在轮转时广播；请求入口也检查到期。超时不消耗额度，仅轮转；房内存在未完成提问/还原判题时暂停，全部完成后恢复余量或重置下一位完整时长。自由模式、揭晓、无可提问玩家时不计时，离线跳过。
+- 前端 `SharedStory` 支持选择汤面文字后“高亮”、点击标记取消及键盘取消按钮；本地异步操作有重复提交、旧轮次和迟到回应保护。`TurnCountdown` 在输入区显示全员同步倒计时，最后10秒红色提示，判题显示冻结余量，断线显示重连提示。等待其他玩家时保留输入框覆盖提示及草稿。
+- 答案判定后先广播新轮次截止时间，再进行可选进度评估，避免慢进度评估让玩家错失下一轮时间；进度回写检查轮次。
+- 遵从用户要求：本次不重启、不部署、不覆盖线上生产构建产物；联机测试使用临时测试服务器和内存数据库，无真实模型请求。
+
 ## 待协调
 
 - fix 第 1 轮最终验收：标准 `pnpm test` 退出 0，27 文件 / 108 测试全部通过（包括真实快照/真实题库及 NOTICE、限流业务拒绝、规格状态机与重连投影）；标准 `pnpm build` 退出 0，49 模块构建成功且内置 tsc 通过；独立 `pnpm exec tsc -p tsconfig.json --noEmit` 退出 0，无需忽略任何文件的类型错误。标准 `pnpm import:puzzles` 退出 0：anchor 41、zerotang 30、haiguitang 38、deepturtle 0，合并 4、最终 105、nsfl 29。可选 deepturtle 缺快照按规格警告跳过。未调用真实 Jev，未读取/打印 .env，未执行 add/install 或请求提权，未留下后台作业。协议 SHA256 与审查一致：690D63B7F0EAF9C77039F9C55A1D9BEE2CCDD3D62F8B4D27ED5743C28AC2F2C9。

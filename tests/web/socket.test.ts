@@ -72,4 +72,26 @@ it('被踢出后清空自动重连身份', () => {
   expect(fake.client.emit).not.toHaveBeenCalled();
   expect(getSnapshot().message).toContain('移出');
 });
+it('并发相同提问复用单次 Socket 请求，ACK 超时但房间状态已落库时自动恢复成功', async () => {
+  vi.useFakeTimers();
+  fake.client.connected = true;
+  joinRoom({ code: 'ABC234', name: '小林', playerKey: 'same-key' });
+  fake.client.emit.mock.calls[0][2]({ ok: true, value: { code: 'ABC234', phase: 'playing', log: [], guesses: [], players: [] } });
+  fake.client.emit.mockClear();
+
+  const p1 = actions.ask('他死了吗？');
+  const p2 = actions.ask('  他死了吗  ');
+  expect(fake.client.emit).toHaveBeenCalledTimes(1);
+
+  // 模拟服务端广播已到达客户端，但 ACK 包在晚高峰丢失
+  fake.handlers['room:state']({
+    code: 'ABC234',
+    phase: 'playing',
+    log: [{ id: 'q-99', playerKey: 'same-key', playerName: '小林', text: '他死了吗？', verdict: '是', at: 1000 }],
+    guesses: [],
+    players: [],
+  });
+  vi.advanceTimersByTime(20000);
+  await expect(Promise.all([p1, p2])).resolves.toEqual([{ id: 'q-99' }, { id: 'q-99' }]);
+});
 

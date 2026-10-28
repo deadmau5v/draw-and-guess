@@ -1,13 +1,14 @@
 {
-    "name": "turtle-soup",
+    "name": "draw-and-guess",
     "private": true,
     "type": "module",
     "engines": {
-        "node": ">=24 <25"
+        "node": ">=24 <27"
     },
     "scripts": {
         "dev": "node --import ./scripts/register-ts.mjs server/index.ts",
         "build": "vite build --configLoader native && tsc -p tsconfig.json --noEmit",
+        "build:next": "next build",
         "start": "node --import ./scripts/register-ts.mjs server/index.ts",
         "test": "vitest run",
         "import:puzzles": "node --import ./scripts/register-ts.mjs scripts/import/run.ts",
@@ -15,12 +16,13 @@
         "typecheck": "tsc -p tsconfig.json --noEmit"
     },
     "dependencies": {
-        "candy-ui": "github:deadmau5v/CandyUI",
+        "candy-ui": "github:deadmau5v/CandyUI#b94aa30d456148a893803f64eec3b09e75f51932",
         "dotenv": "^18.0.5",
         "express": "^5.2.1",
         "lucide-react": "^1.51.0",
         "nanoid": "^6.0.1",
         "next": "^16.3.8",
+        "perfect-freehand": "^1.2.3",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "socket.io": "^4.8.4",

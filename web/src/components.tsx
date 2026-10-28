@@ -7,8 +7,12 @@ import {
 } from 'candy-ui';
 import type { CandyColor } from 'candy-ui';
 import type { ProgressView, PuzzleSummary, RevealView, RoomView, Settings, Verdict } from '@shared/protocol';
-import { verdictTone } from './game';
+import { LIMITS } from '@shared/protocol';
+import { findDuplicateGuess, findDuplicateQuestion, verdictTone } from './game';
 import { resolveAvatar } from './avatars';
+import { cdnUrl } from './cdn';
+import { celebrateSolved, emitFloatingText, playJuiceSound } from './juice';
+import { getSnapshot, notify } from './store';
 
 const AVATAR_CHARACTERS = ['bear', 'cat', 'fox', 'rabbit', 'frog', 'smile', 'crown', 'user'] as const;
 export function getPlayerCharacter(key: string, name: string): (typeof AVATAR_CHARACTERS)[number] {
@@ -73,12 +77,24 @@ export function AskBox({
   onHint?: () => void;
 }) {
   const [text, setText] = useState('');
+  const sendingRef = useRef(false);
   const questionInput = useRef<HTMLTextAreaElement>(null);
   const submit = () => {
-    if (disabled || pending || remaining <= 0 || !text.trim()) return;
-    onAsk(text.trim());
-    setText('');
-    questionInput.current?.focus({ preventScroll: true });
+    const value = text.trim();
+    if (disabled || pending || remaining <= 0 || !value || sendingRef.current) return;
+    const duplicate = findDuplicateQuestion(getSnapshot().room, value);
+    if (duplicate) {
+      notify(duplicate.verdict === '判定中' ? '该问题正在判定中，请勿重复发送' : `该问题本局已提问过（判定：${duplicate.verdict}），请勿重复发送`);
+      return;
+    }
+    sendingRef.current = true;
+    try {
+      onAsk(value);
+      setText('');
+      questionInput.current?.focus({ preventScroll: true });
+    } finally {
+      window.setTimeout(() => { sendingRef.current = false; }, 0);
+    }
   };
 
   return (
@@ -187,7 +203,7 @@ export function QuestionLog({ room }: { room: RoomView }) {
                 <CandyCard role="article" style={{ width: '100%' }}
                   title={(
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <CandyAvatar src={resolveAvatar(event.avatar ?? room.players.find(p => p.key === event.playerKey)?.avatar)} alt={event.playerName} size="xs" />
+                      <CandyAvatar src={cdnUrl(resolveAvatar(event.avatar ?? room.players.find(p => p.key === event.playerKey)?.avatar))} alt={event.playerName} size="xs" />
                       <strong>{event.playerName}</strong>
                       <span> · {event.kind}</span>
                     </span>
@@ -212,31 +228,47 @@ export function QuestionLog({ room }: { room: RoomView }) {
 export function RatingBar({ onRate, disabled }: { onRate: (score: 1 | 0 | -1, funny: boolean) => void; disabled: boolean }) {
   const [rated, setRated] = useState<number | null>(null);
   const [funny, setFunny] = useState(false);
-  const click = (score: 1 | 0 | -1) => {
+  const click = (score: 1 | 0 | -1, event: React.MouseEvent<HTMLButtonElement>) => {
     if (disabled || rated !== null) return;
     setRated(score);
+    playJuiceSound(score === 1 ? 'verdictYes' : score === -1 ? 'verdictNo' : 'verdictIrrelevant');
+    const hasCoords = event.clientX > 0 || event.clientY > 0;
+    emitFloatingText({
+      text: score === 1 ? '👍 好汤认证！' : score === 0 ? '👌 已评价一般' : '已记录反馈',
+      color: score === 1 ? 'green' : score === 0 ? 'yellow' : 'pink',
+      ...(hasCoords ? { x: event.clientX, y: event.clientY } : {}),
+    });
     onRate(score, funny);
   };
-  const toggleFunny = () => {
+  const toggleFunny = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (disabled) return;
     const next = !funny;
     setFunny(next);
+    if (next) {
+      playJuiceSound('mascotPoke');
+      const hasCoords = event.clientX > 0 || event.clientY > 0;
+      emitFloatingText({
+        text: '😂 脑洞好笑 +1',
+        color: 'yellow',
+        ...(hasCoords ? { x: event.clientX, y: event.clientY } : {}),
+      });
+    }
     if (rated !== null) onRate(rated as 1 | 0 | -1, next);
   };
   return (
-    <div role="group" aria-label="故事评价" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div role="group" aria-label="故事评价" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {([
         { score: 1, label: '好汤', variant: 'green' },
         { score: 0, label: '一般', variant: 'yellow' },
         { score: -1, label: '不喜欢', variant: 'pink' },
       ] as const).map(({ score, label, variant }) => (
-        <CandyButton key={score} type="button" variant={rated === score ? variant : 'ghost'}
+        <CandyButton key={score} type="button" variant={rated === score ? variant : 'blue'}
           appearance={rated === score ? 'solid' : 'outline'} size="xs" shape="pill"
-          aria-pressed={rated === score} disabled={disabled} onClick={() => click(score)}>
+          aria-pressed={rated === score} disabled={disabled} onClick={event => click(score, event)}>
           {label}
         </CandyButton>
       ))}
-      <CandyButton type="button" variant={funny ? 'yellow' : 'ghost'}
+      <CandyButton type="button" variant={funny ? 'yellow' : 'blue'}
         appearance={funny ? 'solid' : 'outline'} size="xs" shape="pill"
         aria-pressed={funny} disabled={disabled} onClick={toggleFunny}>
         好笑
@@ -252,16 +284,28 @@ export function RevealModal({ opened, onClose, reveal, disabled, onRate }: {
   disabled: boolean;
   onRate: (score: 1 | 0 | -1, funny: boolean) => void;
 }) {
+  useEffect(() => {
+    if (opened && reveal.reason === 'solved') {
+      celebrateSolved();
+    }
+  }, [opened, reveal.reason]);
   if (!opened) return null;
+  const title = reveal.reason === 'solved'
+    ? '恭喜破案！真相揭晓'
+    : reveal.reason === 'host'
+      ? '本局揭晓 · 真相大白'
+      : '游戏结束 · 真相揭晓';
   return (
-    <CandyModal isOpen={opened} onClose={onClose} showCloseButton={false}
-      title={reveal.reason === 'exhausted' ? '游戏结束 · 真相揭晓' : '恭喜破案！真相揭晓'} theme="frosted">
-      <CandyAlert tone={reveal.reason === 'exhausted' ? 'info' : 'success'}>{reveal.bottom}</CandyAlert>
-      <div style={{ marginBlock: 14 }}>
-        <p>为本题打分：</p>
+    <CandyModal isOpen={opened} onClose={onClose}
+      title={title} theme="frosted">
+      <CandyAlert tone={reveal.reason === 'solved' ? 'success' : 'info'} title="汤底揭晓">
+        <div style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{reveal.bottom}</div>
+      </CandyAlert>
+      <div style={{ marginTop: 16 }}>
+        <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 14 }}>为本题打分：</p>
         <RatingBar onRate={onRate} disabled={disabled} />
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
         <CandyButton type="button" variant="blue" size="sm" onClick={onClose}>关闭</CandyButton>
       </div>
     </CandyModal>
@@ -272,29 +316,44 @@ export function RevealPanel({ reveal, disabled, onRate }: { reveal: RevealView; 
   return (
     <CandyPanel theme="frosted" style={{ marginTop: 20 }}>
       <h3>真相大白</h3>
-      <CandyAlert tone="success">{reveal.bottom}</CandyAlert>
-      <div style={{ marginTop: 14 }}><RatingBar onRate={onRate} disabled={disabled} /></div>
+      <CandyAlert tone="success" title="汤底揭晓">{reveal.bottom}</CandyAlert>
+      <div style={{ marginTop: 16 }}><RatingBar onRate={onRate} disabled={disabled} /></div>
     </CandyPanel>
   );
 }
 
-export function GuessModal({ disabled, remaining, onClose, onGuess }: { disabled: boolean; remaining: number; onClose: () => void; onGuess: (text: string) => void }) {
+export function GuessModal({ disabled, remaining, surface, onClose, onGuess }: { disabled: boolean; remaining: number; surface?: string; onClose: () => void; onGuess: (text: string) => void }) {
   const [text, setText] = useState('');
+  const submittingRef = useRef(false);
   const submit = () => {
-    if (disabled || remaining <= 0 || !text.trim()) return;
-    onGuess(text.trim());
+    const value = text.trim();
+    if (disabled || remaining <= 0 || !value || submittingRef.current) return;
+    const duplicate = findDuplicateGuess(getSnapshot().room, value);
+    if (duplicate) {
+      notify(duplicate.outcome === '判定中' ? '该还原内容正在判定中，请勿重复发送' : `该还原内容本局已提交过（结果：${duplicate.outcome}），请勿重复发送`);
+      return;
+    }
+    submittingRef.current = true;
+    onGuess(value);
     onClose();
   };
   return (
-    <CandyModal isOpen onClose={onClose} title="还原真相" showCloseButton={false} theme="frosted">
-      <p>剩余 {remaining} 次还原机会</p>
-      <CandyTextarea aria-label="你的故事还原" maxLength={500} rows={5} value={text}
+    <CandyModal isOpen onClose={onClose} title="提交真相 · 还原故事" theme="frosted">
+      {surface && (
+        <div style={{ marginBottom: 14 }}>
+          <CandyAlert tone="info" title="汤面回顾">
+            <div style={{ maxHeight: 100, overflowY: 'auto', fontSize: 14, lineHeight: 1.65 }}>{surface}</div>
+          </CandyAlert>
+        </div>
+      )}
+      <p style={{ margin: '0 0 10px', fontWeight: 600 }}>剩余 {remaining} 次还原机会</p>
+      <CandyTextarea aria-label="你的故事还原" maxLength={LIMITS.guessMax} showCount rows={5} value={text}
         placeholder="写出你推测出的完整故事真相（因果、关键人物、凶器或隐藏事实）…"
         onChange={e => setText(e.target.value)} />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 18 }}>
         <CandyButton type="button" variant="gray" appearance="outline" size="sm" onClick={onClose}>取消</CandyButton>
         <CandyButton type="button" variant="yellow" size="sm" disabled={disabled || remaining <= 0 || !text.trim()} onClick={submit}>
-          提交还原
+          提交真相
         </CandyButton>
       </div>
     </CandyModal>
@@ -328,21 +387,35 @@ export function PlayerList({ room, selfKey, disabled, onKick, compact = false }:
     <CandyPanel theme="frosted" style={compact ? { padding: 12, fontSize: 12 } : undefined}>
       <h4 style={compact ? { fontSize: 14, margin: '0 0 10px' } : undefined}>同桌玩家 ({room.players.length}/8)</h4>
       <CandyList variant="plain" divided size="sm">
-        {room.players.map(player => (
-          <CandyListItem key={player.key} highlight={player.key === selfKey}
-            leading={<CandyAvatar src={resolveAvatar(player.avatar)} alt={player.name} size="xs" status={player.online ? 'online' : 'offline'} />}
-            title={(
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <strong style={compact ? { fontSize: 13 } : undefined}>{player.name}</strong>
-                {player.isHost && <CandyStatusBadge status="host" label="[房主]" size="sm" />}
-                {player.key === selfKey && <CandyBadge variant="gray" size="sm">(你)</CandyBadge>}
-              </span>
-            )}
-            description={player.online ? `${player.asked}问 ${player.guesses}还原` : '离线'}
-            trailing={host && player.key !== selfKey ? (
-              <CandyButton type="button" variant="red" size="xs" disabled={disabled} onClick={() => onKick(player.key)}>移出</CandyButton>
-            ) : undefined} />
-        ))}
+        {room.players.map(player => {
+          const isDrawer = room.phase === 'playing' && room.drawerKey === player.key;
+          const deviceIcon = player.device?.kind === 'stylus'
+            ? 'pencil'
+            : player.device?.kind === 'tablet' || player.device?.kind === 'mobile'
+              ? 'controller'
+              : 'earth';
+          return (
+            <CandyListItem key={player.key} highlight={player.key === selfKey}
+              leading={<CandyAvatar src={cdnUrl(resolveAvatar(player.avatar))} alt={player.name} size="xs" status={player.online ? 'online' : 'offline'} />}
+              title={(
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <strong style={compact ? { fontSize: 13 } : undefined}>{player.name}</strong>
+                  {player.isHost && <CandyStatusBadge status="host" label="[房主]" size="sm" />}
+                  {isDrawer && <CandyBadge variant="yellow" size="sm"><CandyGameIcon name="pencil" size={12} /> 画手</CandyBadge>}
+                  {player.key === selfKey && <CandyBadge variant="gray" size="sm">(你)</CandyBadge>}
+                  {player.device && (
+                    <CandyBadge variant="blue" size="sm" title={`使用设备：${player.device.label}`}>
+                      <CandyGameIcon name={deviceIcon} size={12} /> {player.device.label}
+                    </CandyBadge>
+                  )}
+                </span>
+              )}
+              description={`${player.online ? `${player.asked}问 ${player.guesses}还原` : '离线重连中'} · 本题 ${player.roundPoints ?? 0}分 · 永久 ${player.totalPoints ?? 0}分`}
+              trailing={host && player.key !== selfKey ? (
+                <CandyButton type="button" variant="red" size="xs" disabled={disabled} onClick={() => onKick(player.key)}>移出</CandyButton>
+              ) : undefined} />
+          );
+        })}
       </CandyList>
     </CandyPanel>
   );

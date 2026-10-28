@@ -1,5 +1,5 @@
-export interface DecisionRequest { apiKey:string; model:string; state:Record<string,unknown>; instructions:string; criteria:Record<string,string> }
-export interface DecisionResult { choice:string; confidence:number; cost:number }
+export interface DecisionRequest { apiKey:string; model:string; state:Record<string,unknown>; instructions:string; criteria:Record<string,string>; proximity?:{instructions:string;criteria:string[]} }
+export interface DecisionResult { choice:string; confidence:number; cost:number; proximity?:number }
 export interface DecisionOptions { fetchImpl?:typeof fetch; sleep?:(ms:number)=>Promise<void> }
 export async function decide(request:DecisionRequest,options:DecisionOptions={}):Promise<DecisionResult> {
  const fetchImpl=options.fetchImpl??fetch;
@@ -9,7 +9,7 @@ export async function decide(request:DecisionRequest,options:DecisionOptions={})
   try {
    response=await fetchImpl('https://openrouter.ai/api/alpha/decisions',{
     method:'POST',headers:{Authorization:`Bearer ${request.apiKey}`,'Content-Type':'application/json','HTTP-Referer':'http://localhost','X-Title':'Turtle Soup'},
-    body:JSON.stringify({model:request.model,state:request.state,questions:{verdict:{type:'choice',instructions:request.instructions,criteria:request.criteria}}}),
+    body:JSON.stringify({model:request.model,state:request.state,questions:{verdict:{type:'choice',instructions:request.instructions,criteria:request.criteria},...(request.proximity?{proximity:{type:'score',...request.proximity}}:{})}}),
    });
   } catch(e) { if(attempt===2) throw e; await sleep([300,900][attempt]); continue; }
   if(!response.ok) {
@@ -21,7 +21,9 @@ export async function decide(request:DecisionRequest,options:DecisionOptions={})
   const confidence=answer?.probabilities===undefined ? answer?.confidence??0 : answer?.probabilities?.[choice];
   if(typeof choice!=='string'||!Object.hasOwn(request.criteria,choice)||typeof confidence!=='number'||!Number.isFinite(confidence)||confidence<0||confidence>1) throw new Error('Jev 返回无效判定');
   const cost=body.usage?.cost;
-  return {choice,confidence,cost:typeof cost==='number'&&Number.isFinite(cost)&&cost>=0?cost:0};
+  const score=body.answers?.proximity?.score;
+  const validScore=request.proximity&&typeof score==='number'&&Number.isFinite(score)&&score>=0&&score<=4;
+  return {choice,confidence,cost:typeof cost==='number'&&Number.isFinite(cost)&&cost>=0?cost:0,...(validScore?{proximity:Math.round(score*25)}:{})};
  }
  throw new Error('Jev 请求失败');
 }

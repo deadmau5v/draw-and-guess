@@ -1,7 +1,8 @@
 'use client';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { beginRouteLoading, finishRouteLoading, usePageLoading } from '../web/src/loading';
+import { beginRouteLoading, finishRouteLoading } from '../web/src/loading';
+import { PageContainer, SectionLoading } from '../web/src/PageContainer';
 
 export function useGameRouter() {
   const router = useRouter();
@@ -16,6 +17,5 @@ export function GameRouteTransition() {
   return null;
 }
 export function LoadingScene() {
-  usePageLoading(true, '正在切换场景…');
-  return null;
+  return <PageContainer><SectionLoading label="正在切换场景…" skeleton /></PageContainer>;
 }

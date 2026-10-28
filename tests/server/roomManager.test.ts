@@ -41,7 +41,7 @@ it('提问阶段和字符数检查',()=>{const {m,code}=setup();expect(m.beginAs
 it('破解成功进入 revealed，调用方设置揭晓并可再开局',()=>{const {m,code}=setup();value(m.start(code,'a',puzzle.id));const g=value(m.beginGuess(code,'b','真相'));value(m.applyOutcome(code,g.id,'破解成功'));expect(value(m.toPublicView(code))).toMatchObject({phase:'revealed',reveal:null});value(m.setReveal(code,{bottom:'秘密汤底',hints:['提示'],winnerName:'甲(2)',reason:'solved'}));expect(value(m.toPublicView(code)).reveal?.reason).toBe('solved');value(m.start(code,'a',puzzle.id));expect(value(m.toPublicView(code))).toMatchObject({reveal:null,log:[],guesses:[],round:2});});
 it.each(['perPlayer','shared'] as const)('%s 额度和猜测耗尽后自动揭晓且等待在途',mode=>{const {m,code}=setup();value(m.updateSettings(code,'a',{quotaMode:mode,quota:1,maxGuesses:1}));value(m.start(code,'a',puzzle.id));for(const key of mode==='shared'?['a']:['a','b']){const q=value(m.beginAsk(code,key,'问'));value(m.applyVerdict(code,q.id,'是',1));}const a=value(m.beginGuess(code,'a','猜'));value(m.applyOutcome(code,a.id,'还没猜对'));const b=value(m.beginGuess(code,'b','猜'));expect(value(m.toPublicView(code)).phase).toBe('playing');value(m.applyOutcome(code,b.id,'还没猜对'));expect(value(m.toPublicView(code)).phase).toBe('revealed');});
 it('猜测额度和长度检查，不确定退还次数',()=>{const {m,code}=setup();value(m.updateSettings(code,'a',{maxGuesses:1}));value(m.start(code,'a',puzzle.id));expect(m.beginGuess(code,'a','字'.repeat(401))).toMatchObject({ok:false,code:'INVALID'});let g=value(m.beginGuess(code,'a','猜'));value(m.applyOutcome(code,g.id,'不确定'));expect(value(m.toPublicView(code)).players[0].guesses).toBe(0);g=value(m.beginGuess(code,'a','猜'));value(m.applyOutcome(code,g.id,'还没猜对'));expect(m.beginGuess(code,'a','猜')).toMatchObject({ok:false,code:'QUOTA_EXCEEDED'});});
-it('提示限房主且不超过总量，揭晓只能由房主设置',()=>{const {m,code}=setup();value(m.start(code,'a',puzzle.id,1));expect(JSON.stringify(value(m.toPublicView(code)))).not.toContain('秘密');expect(m.setReveal(code,{bottom:'秘密汤底',hints:[],winnerName:null,reason:'host'})).toMatchObject({ok:false,code:'BAD_PHASE'});expect(m.showHint(code,'b',1)).toMatchObject({ok:false,code:'NOT_HOST'});value(m.showHint(code,'a',1));expect(value(m.getRoom(code)).hintsShown).toBe(1);expect(value(m.toPublicView(code)).hints).toEqual([]);expect(m.showHint(code,'a',1)).toMatchObject({ok:false});expect(m.reveal(code,'b')).toMatchObject({ok:false,code:'NOT_HOST'});value(m.reveal(code,'a'));expect(value(m.toPublicView(code)).phase).toBe('revealed');});
+it('提示全员共享且不超过总量，揭晓只能由房主设置',()=>{const {m,code}=setup();value(m.start(code,'a',puzzle.id,1));expect(JSON.stringify(value(m.toPublicView(code)))).not.toContain('秘密');expect(m.setReveal(code,{bottom:'秘密汤底',hints:[],winnerName:null,reason:'host'})).toMatchObject({ok:false,code:'BAD_PHASE'});value(m.showHint(code,'b',1));expect(value(m.getRoom(code)).hintsShown).toBe(1);expect(value(m.toPublicView(code)).hints).toEqual([]);expect(m.showHint(code,'a',1)).toMatchObject({ok:false});expect(m.reveal(code,'b')).toMatchObject({ok:false,code:'NOT_HOST'});value(m.reveal(code,'a'));expect(value(m.toPublicView(code)).phase).toBe('revealed');});
 it('房主离线 60 秒移交最早在线者，全员离线十分钟销毁',()=>{let now=0;const {m,code}=setup({now:()=>now});value(m.disconnect('sa'));now=59999;value(m.sweep(now));expect(value(m.toPublicView(code)).hostKey).toBe('a');now=60000;value(m.sweep(now));expect(value(m.toPublicView(code)).hostKey).toBe('b');value(m.disconnect('sb'));now+=599999;value(m.sweep(now));expect(m.toPublicView(code).ok).toBe(true);now++;value(m.sweep(now));expect(m.toPublicView(code)).toMatchObject({ok:false,code:'NOT_FOUND'});});
 it('离线跳过轮次，重连保留身份计数且旧 socket 断线不影响',()=>{const {m,code}=setup();value(m.updateSettings(code,'a',{turnMode:'turns'}));value(m.start(code,'a',puzzle.id));const q=value(m.beginAsk(code,'a','问'));value(m.applyVerdict(code,q.id,'是',1));value(m.disconnect('sb'));expect(value(m.toPublicView(code)).turnKey).toBe('a');value(m.join(code,'改名','a','new'));value(m.disconnect('sa'));expect(value(m.toPublicView(code)).players[0]).toMatchObject({online:true,name:'甲',asked:1});});
 it('踢人仅房主可用，离开转移房主并维护名单',()=>{const {m,code}=setup();expect(m.kick(code,'b','a')).toMatchObject({ok:false,code:'NOT_HOST'});value(m.kick(code,'a','b'));expect(value(m.toPublicView(code)).players).toHaveLength(1);value(m.join(code,'乙','b','sb'));value(m.leave(code,'a'));expect(value(m.toPublicView(code)).hostKey).toBe('b');value(m.leave(code,'b'));expect(m.toPublicView(code).ok).toBe(false);});
@@ -54,12 +54,29 @@ it('规格接口接收 puzzleId 和 hintCount，内部不保存题目或提示�
  expect(value(m.getRoom(code))).toMatchObject({puzzleId:'p',playedIds:['p'],hintsShown:0});
  expect(value(m.getRoom(code))).not.toHaveProperty('puzzle');
  expect(value(m.getRoom(code))).not.toHaveProperty('hintTexts');
- expect(m.showHint(code,'b',2)).toMatchObject({ok:false,code:'NOT_HOST'});
- expect(m.showHint(code,'a',2)).toMatchObject({ok:true});
+ expect(m.showHint(code,'b',2)).toMatchObject({ok:true});
  expect(m.showHint(code,'a',2)).toMatchObject({ok:true});
  expect(m.showHint(code,'a',2)).toMatchObject({ok:false,code:'INVALID'});
  expect(value(m.getRoom(code)).hintsShown).toBe(2);
  expect(value(m.toPublicView(code)).hints).toEqual([]);
+});
+it('汤面高亮全员共享、可取消、拒绝越界重叠与旧轮次，新局清空',()=>{
+ const {m,code}=setup();
+ expect(m.addHighlight(code,'a',{round:0,start:0,end:2},8)).toMatchObject({ok:false,code:'BAD_PHASE'});
+ value(m.start(code,'a',puzzle.id));
+ value(m.addHighlight(code,'b',{round:1,start:1,end:4},8));
+ const view=value(m.toPublicView(code));
+ expect(view.highlights).toEqual([{id:expect.any(String),start:1,end:4,playerKey:'b',playerName:'甲(2)'}]);
+ for(const range of [{start:-1,end:2},{start:1.5,end:2},{start:3,end:3},{start:4,end:9},{start:2,end:5}]) expect(m.addHighlight(code,'a',{round:1,...range},8)).toMatchObject({ok:false,code:'INVALID'});
+ expect(m.addHighlight(code,'missing',{round:1,start:4,end:6},8)).toMatchObject({ok:false,code:'NOT_IN_ROOM'});
+ expect(m.removeHighlight(code,'a',{round:0,id:view.highlights[0].id})).toMatchObject({ok:false,code:'INVALID'});
+ value(m.removeHighlight(code,'a',{round:1,id:view.highlights[0].id}));
+ expect(value(m.toPublicView(code)).highlights).toEqual([]);
+ value(m.addHighlight(code,'a',{round:1,start:0,end:2},8));
+ value(m.reveal(code,'a'));value(m.start(code,'a',puzzle.id));
+ expect(value(m.toPublicView(code)).highlights).toEqual([]);
+ expect(m.addHighlight(code,'a',{round:1,start:0,end:2},8)).toMatchObject({ok:false,code:'INVALID'});
+ expect(JSON.stringify(value(m.toPublicView(code)))).not.toContain('秘密汤底');
 });
 it('大厅公开视图不含汤底',()=>{const {m,code}=setup();expect(JSON.stringify(value(m.toPublicView(code)))).not.toContain('秘密汤底');});
 it('进度状态：大厅默认迷雾重重，开局初始化为0%，setProgress更新，揭晓设置为100%真相大白',()=>{

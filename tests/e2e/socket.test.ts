@@ -2,6 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { io, type Socket } from 'socket.io-client';
 import type { Ack, ClientToServer, ServerToClient, RoomView } from '../../shared/protocol.js';
 import { createApp } from '../../server/app.js';
+import { RoomManager } from '../../server/rooms/roomManager.js';
 import { fixture, bottom } from './fixture.js';
 let app:ReturnType<typeof createApp>;
 const clients:Socket<ServerToClient,ClientToServer>[]=[];
@@ -19,6 +20,51 @@ async function setup(deps=fixture()) {
 function state(s:Socket<ServerToClient,ClientToServer>,predicate:(r:RoomView)=>boolean):Promise<RoomView> {
  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{s.off('room:state',onState);reject(Error('等待状态超时'));},1500);const onState=(r:RoomView)=>{if(predicate(r)){clearTimeout(timer);s.off('room:state',onState);resolve(r);}};s.on('room:state',onState);});
 }
+test('共享高亮同步给其他玩家与重连者，取消同步且非法/旧轮次请求拒绝、不泄漏汤底',async()=>{
+ const {a,b,join,connect}=await setup();await join(a,'a');await join(b,'b');
+ await new Promise<Ack>(r=>a.emit('game:start',{puzzleId:'test-1'},r));
+ const highlighted=state(b,r=>r.highlights?.length===1);
+ expect(await new Promise<Ack>(r=>a.emit('surface:highlight',{round:1,start:0,end:2},r))).toMatchObject({ok:true});
+ const view=await highlighted;expect(view.highlights[0]).toMatchObject({start:0,end:2,playerName:'甲'});
+ expect(JSON.stringify(view).includes(bottom)).toBe(false);
+ const restored=await join(await connect(),'b');expect(restored).toMatchObject({ok:true,value:{highlights:view.highlights}});
+ expect(JSON.stringify(restored).includes(bottom)).toBe(false);
+ expect(await new Promise<Ack>(r=>b.emit('surface:highlight',{round:1,start:3,end:4},r))).toMatchObject({ok:false,code:'NOT_IN_ROOM'});
+ expect(await new Promise<Ack>(r=>a.emit('surface:highlight',{round:0,start:3,end:4},r))).toMatchObject({ok:false,code:'INVALID'});
+ expect(await new Promise<Ack>(r=>a.emit('surface:highlight',{round:1,start:0,end:99999},r))).toMatchObject({ok:false,code:'INVALID'});
+ const cleared=state(a,r=>r.highlights.length===0);
+ expect(await new Promise<Ack>(r=>a.emit('surface:unhighlight',{round:1,id:view.highlights[0].id},r))).toMatchObject({ok:true});
+ expect(JSON.stringify(await cleared).includes(bottom)).toBe(false);
+});
+test('答案判定后立即同步下一轮倒计时，不被后续进度评估阻塞',async()=>{
+ let release!:(r:{score:number;status:string})=>void;
+ const progress=new Promise<{score:number;status:string}>(done=>{release=done;});
+ const deps=fixture({judgeQuestion:async()=>({verdict:'是',confidence:1}),judgeSolution:async()=>({outcome:'还没猜对',confidence:1}),evaluateProgress:()=>progress,totalCost:()=>0});
+ const {a,b,join}=await setup(deps);await join(a,'a');await join(b,'b');
+ await new Promise<Ack>(r=>a.emit('room:settings',{turnMode:'turns'},r));await new Promise<Ack>(r=>a.emit('game:start',{},r));
+ const answered=state(b,r=>r.log[0]?.verdict==='是');
+ try {
+  await new Promise<Ack<{id:string}>>(r=>a.emit('q:ask',{text:'问'},r));
+  expect(await answered).toMatchObject({turnKey:'b',turnRemainingMs:null,turnDeadline:expect.any(Number)});
+ } finally {release({score:20,status:'初见端倪'});}
+});
+test('默认90秒服务器自动广播轮转，判题暂停，结束后下一轮同步新截止时间',async()=>{
+ let now=1000;let resolve!:(r:{verdict:'是';confidence:number})=>void;
+ const deps=fixture({judgeQuestion:()=>new Promise(done=>{resolve=done;}),judgeSolution:async()=>({outcome:'还没猜对',confidence:1}),totalCost:()=>0});
+ deps.rooms=new RoomManager({now:()=>now});
+ const {a,b,join}=await setup(deps);await join(a,'a');await join(b,'b');
+ expect(await new Promise<Ack>(r=>a.emit('room:settings',{turnMode:'turns',turnSeconds:90},r))).toMatchObject({ok:true});
+ const initial=state(b,r=>r.phase==='playing');await new Promise<Ack>(r=>a.emit('game:start',{},r));
+ expect(await initial).toMatchObject({turnKey:'a',turnDeadline:91000,serverNow:1000});
+ const advanced=state(a,r=>r.turnKey==='b');now=91000;
+ const skipped=await advanced;expect(skipped.turnDeadline).toBe(181000);expect(JSON.stringify(skipped).includes(bottom)).toBe(false);
+ const paused=state(a,r=>r.log[0]?.verdict==='判定中');
+ expect(await new Promise<Ack<{id:string}>>(r=>b.emit('q:ask',{text:'他活着吗'},r))).toMatchObject({ok:true});
+ expect(await paused).toMatchObject({turnKey:'b',turnDeadline:null,turnRemainingMs:90000});
+ now=900000;
+ const judged=state(a,r=>r.log[0]?.verdict==='是');resolve({verdict:'是',confidence:1});
+ expect(await judged).toMatchObject({turnKey:'a',turnDeadline:990000});
+});
 test('玩家真实头像广播给其他玩家，提问记录与重连保持头像且无汤底泄漏',async()=>{
  const {a,b,join,connect}=await setup();
  const anime='/assets/avatars/player-anime.png', smile='/assets/avatars/player-smile.png';
@@ -91,8 +137,7 @@ test('房主设置、公开提示、主动揭晓、评分 upsert、踢人及离�
  expect(await new Promise(r=>a.emit('room:settings',{quota:1,maxGuesses:1},r))).toMatchObject({ok:true});
  await new Promise(r=>a.emit('game:start',{},r));
  expect(await new Promise(r=>b.emit('rate',{score:1,funny:true},r))).toMatchObject({ok:false,code:'BAD_PHASE'});
- expect(await new Promise(r=>b.emit('hint:show',r))).toMatchObject({ok:false,code:'NOT_HOST'});
- const hinted=state(b,r=>r.hints.length===1);expect(await new Promise(r=>a.emit('hint:show',r))).toMatchObject({ok:true});
+ const hinted=state(a,r=>r.hints.length===1);expect(await new Promise(r=>b.emit('hint:show',r))).toMatchObject({ok:true});
  expect((await hinted).hints).toEqual(['他没有受伤']);
  expect(await new Promise(r=>a.emit('hint:show',r))).toMatchObject({ok:false,code:'INVALID'});
  const revealed=state(b,r=>!!r.reveal);expect(await new Promise(r=>a.emit('game:reveal',r))).toMatchObject({ok:true});expect((await revealed).reveal?.reason).toBe('host');
@@ -153,4 +198,50 @@ test('共享资源耗尽自动揭晓并记录失败局',async()=>{
  await new Promise(r=>setTimeout(r,2050));
  const revealed=state(a,r=>!!r.reveal);await new Promise(r=>a.emit('guess:submit',{text:'猜错的答案'},r));
  expect((await revealed).reveal?.reason).toBe('exhausted');expect(deps.repo.getPublic('test-1')).toMatchObject({plays:1,solves:0});
+});
+
+test('防止重复判定与重复重发：在途相同请求幂等返回、不同玩家在途相同提问拦截、还原真相拒绝重复',async()=>{
+ let now=1000;vi.spyOn(Date,'now').mockImplementation(()=>now);
+ let releaseQuestion!:(v:{verdict:'是'|'不确定';confidence:number})=>void;
+ const judgeQuestion=vi.fn(()=>new Promise<{verdict:'是'|'不确定';confidence:number}>(r=>{releaseQuestion=r;}));
+ const judgeSolution=vi.fn(async()=>({outcome:'还没猜对' as const,confidence:1}));
+ const {a,b,join}=await setup(fixture({judgeQuestion,judgeSolution,totalCost:()=>0}));
+ await join(a,'a');await join(b,'b');
+ await new Promise(r=>a.emit('room:settings',{turnMode:'free'},r));
+ await new Promise(r=>a.emit('game:start',{},r));
+ const first=await new Promise<Ack<{id:string}>>(r=>b.emit('q:ask',{text:'是在孤儿院吗？'},r));
+ expect(first.ok).toBe(true);
+ // 同一玩家在途重发相同问题（忽略标点与空格）幂等返回原 id，不触发限流或二次入队
+ const retrySame=await new Promise<Ack<{id:string}>>(r=>b.emit('q:ask',{text:'  是在孤儿院吗  '},r));
+ expect(retrySame).toEqual(first);
+ // 另一玩家在途发送相同问题被拦截
+ expect(await new Promise<Ack<{id:string}>>(r=>a.emit('q:ask',{text:'是在孤儿院吗'},r))).toMatchObject({ok:false,code:'INVALID'});
+ const judged1=state(a,r=>r.log[0]?.verdict==='是');
+ releaseQuestion({verdict:'是',confidence:1});
+ const roomAfter1=await judged1;
+ expect(JSON.stringify(roomAfter1)).not.toContain(bottom);
+ expect(judgeQuestion).toHaveBeenCalledTimes(1);
+ // 本局已判定为“是”的问题再次提问（无论同玩家或不同玩家）均被拒绝且不消耗额度/限流
+ expect(await new Promise<Ack<{id:string}>>(r=>a.emit('q:ask',{text:'是在孤儿院吗？'},r))).toMatchObject({ok:false,code:'INVALID'});
+ expect(await new Promise<Ack<{id:string}>>(r=>b.emit('q:ask',{text:'是在孤儿院吗'},r))).toMatchObject({ok:false,code:'INVALID'});
+ // 若判定结果为“不确定”，允许重新提问
+ const askUncertain=await new Promise<Ack<{id:string}>>(r=>a.emit('q:ask',{text:'他有同伴吗？'},r));
+ expect(askUncertain.ok).toBe(true);
+ const judgedUncertain=state(a,r=>r.log[1]?.verdict==='不确定');
+ releaseQuestion({verdict:'不确定',confidence:0.2});
+ await judgedUncertain;
+ now+=3000;
+ const askRetryAfterUncertain=await new Promise<Ack<{id:string}>>(r=>b.emit('q:ask',{text:'他有同伴吗'},r));
+ expect(askRetryAfterUncertain.ok).toBe(true);
+ const judgedRetry=state(a,r=>r.log[2]?.verdict==='是');
+ releaseQuestion({verdict:'是',confidence:1});
+ await judgedRetry;
+ // 还原真相同样支持在途幂等与拦截本局重复提交
+ now+=3000;
+ const guessed=state(a,r=>r.guesses[0]?.outcome==='还没猜对');
+ const g1=await new Promise<Ack<{id:string}>>(r=>a.emit('guess:submit',{text:'因为打嗝所以喝水'},r));
+ expect(g1.ok).toBe(true);
+ await guessed;
+ expect(await new Promise<Ack<{id:string}>>(r=>b.emit('guess:submit',{text:'因为打嗝所以喝水！'},r))).toMatchObject({ok:false,code:'INVALID'});
+ expect(judgeSolution).toHaveBeenCalledTimes(1);
 });

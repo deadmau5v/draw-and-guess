@@ -1,0 +1,72 @@
+{
+  "provider": "CPA",
+  "model": "nanobanana",
+  "endpoint": "https://ai.denox.cc/v1/images/generations",
+  "note": "Theme illustrations only. Prompts contain no puzzle solutions or unpublished hints.",
+  "covers": [
+    {
+      "file": "lighthouse.webp",
+      "scene": "A lonely lighthouse on a rocky island at night, a warm lantern and a cute small green turtle detective in the foreground, moonlight over gentle waves."
+    },
+    {
+      "file": "bar.webp",
+      "scene": "An empty cozy vintage cafe bar, a sparkling glass of water on the wooden counter, warm amber pendant lamps, an intriguing closed door in the background. No weapons."
+    },
+    {
+      "file": "train.webp",
+      "scene": "A whimsical blue night train at a quiet railway platform, an old station clock and a small green turtle detective carrying a suitcase, purple sunset sky."
+    },
+    {
+      "file": "school.webp",
+      "scene": "An empty cheerful classroom, two wooden desks near a sunlit window, notebooks and a pencil, spring leaves outside, intriguing gentle mystery atmosphere."
+    },
+    {
+      "file": "night.webp",
+      "scene": "A mysterious blue suburban house at night with one warmly glowing window, crescent moon, a small green turtle detective holding a flashlight outside. Playful, not frightening."
+    },
+    {
+      "file": "cozy.webp",
+      "scene": "A pink birthday cake with one glowing candle on a cozy wooden table, confetti, an envelope and a tiny green turtle detective, warm peach and yellow colors."
+    },
+    {
+      "file": "pet.webp",
+      "scene": "A friendly golden dog with a red ball beside a small green turtle detective in a bright garden, expressive faces, lush blue and green landscape."
+    },
+    {
+      "file": "sea.webp",
+      "scene": "A small wooden boat near a beautiful deserted tropical island, blue sea, a rolled map and brass compass in the foreground, a small green turtle detective observing the horizon."
+    },
+    {
+      "file": "car.webp",
+      "scene": "A small blue family car parked safely on an empty road under a starry night sky, warm cabin light, a cute green turtle detective inspecting a road map. No accident, no baby, no distress."
+    },
+    {
+      "file": "heels.webp",
+      "scene": "A beautiful pair of red high heels on a wooden backstage dressing table, golden vanity bulbs, purple curtains, small green turtle detective watching curiously. No person, no danger."
+    },
+    {
+      "file": "perfume.webp",
+      "scene": "A half-full crystal perfume bottle with a pink ribbon on a bedroom vanity, softly lit blue curtains, warm lamp, cute green turtle detective looking thoughtfully. No hidden person."
+    },
+    {
+      "file": "window.webp",
+      "scene": "A cozy writers attic with an open skylight showing a blue spring sky, loose manuscript pages and a typewriter on a desk, small green turtle detective, sunbeams and warm colors."
+    },
+    {
+      "file": "library.webp",
+      "scene": "A magical but ordinary cozy public library with tall bookshelves, an open blank book on a wooden reading table, green turtle detective wearing little glasses. No readable text."
+    },
+    {
+      "file": "music.webp",
+      "scene": "An ornate vintage wooden music box with its lid open, tiny musical notes floating as decorative sparkles, lavender childhood bedroom, small green turtle detective. No secret mechanism."
+    },
+    {
+      "file": "icecream.webp",
+      "scene": "Two brightly colored ice cream cones in a cheerful ice cream shop, mint green and pastel pink scoops, a friendly green turtle detective, sunny afternoon. No tragedy."
+    },
+    {
+      "file": "stairs.webp",
+      "scene": "A blue compact car beside a cheerful urban parking entrance with a few stone steps and a street lamp, cute green turtle detective holding a key. No text or numbers."
+    }
+  ]
+}

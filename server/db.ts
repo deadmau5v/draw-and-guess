@@ -7,8 +7,17 @@ export function openDb(path: string): DatabaseSync {
  hints TEXT NOT NULL DEFAULT '[]', difficulty INTEGER, tags TEXT NOT NULL DEFAULT '[]', nsfl INTEGER NOT NULL DEFAULT 0,
  source TEXT NOT NULL, also_in TEXT NOT NULL DEFAULT '[]', plays INTEGER NOT NULL DEFAULT 0, solves INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS ratings(puzzle_id TEXT NOT NULL, player_key TEXT NOT NULL, score INTEGER NOT NULL CHECK(score IN (1,0,-1)), funny INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, PRIMARY KEY(puzzle_id, player_key));
- CREATE TABLE IF NOT EXISTS judge_cache(puzzle_id TEXT NOT NULL, kind TEXT NOT NULL, norm_text TEXT NOT NULL, choice TEXT NOT NULL, confidence REAL NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY(puzzle_id, kind, norm_text));
- CREATE TABLE IF NOT EXISTS games(id TEXT PRIMARY KEY, room_code TEXT NOT NULL, puzzle_id TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER, outcome TEXT, winner_name TEXT, log TEXT NOT NULL DEFAULT '[]');`);
+ CREATE TABLE IF NOT EXISTS judge_cache(puzzle_id TEXT NOT NULL, kind TEXT NOT NULL, norm_text TEXT NOT NULL, choice TEXT NOT NULL, confidence REAL NOT NULL, proximity INTEGER, created_at INTEGER NOT NULL, PRIMARY KEY(puzzle_id, kind, norm_text));
+ CREATE TABLE IF NOT EXISTS games(id TEXT PRIMARY KEY, room_code TEXT NOT NULL, puzzle_id TEXT NOT NULL, started_at INTEGER NOT NULL, ended_at INTEGER, outcome TEXT, winner_name TEXT, log TEXT NOT NULL DEFAULT '[]');
+ CREATE TABLE IF NOT EXISTS player_scores(player_key TEXT PRIMARY KEY, name TEXT NOT NULL, avatar TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0 CHECK(points>=0), questions INTEGER NOT NULL DEFAULT 0 CHECK(questions>=0), best_proximity INTEGER NOT NULL DEFAULT 0 CHECK(best_proximity BETWEEN 0 AND 100), updated_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS score_awards(id TEXT PRIMARY KEY, player_key TEXT NOT NULL, puzzle_id TEXT NOT NULL, norm_text TEXT NOT NULL, points INTEGER NOT NULL CHECK(points BETWEEN 0 AND 10), proximity INTEGER NOT NULL CHECK(proximity BETWEEN 0 AND 100), created_at INTEGER NOT NULL, UNIQUE(player_key,puzzle_id,norm_text));
+ CREATE TABLE IF NOT EXISTS room_snapshots(code TEXT PRIMARY KEY, state TEXT NOT NULL, updated_at INTEGER NOT NULL);
+ CREATE INDEX IF NOT EXISTS player_scores_ranking ON player_scores(points DESC,best_proximity DESC,updated_at ASC);`);
+ // Existing production databases keep their puzzle/history/cache rows intact.
+ if (!db.prepare('PRAGMA table_info(judge_cache)').all().some(column => column.name === 'proximity')) db.exec('ALTER TABLE judge_cache ADD COLUMN proximity INTEGER');
+ db.exec(`UPDATE puzzles SET
+  plays = MAX(plays, (SELECT count(*) FROM games WHERE games.puzzle_id = puzzles.id)),
+  solves = MAX(solves, (SELECT count(*) FROM games WHERE games.puzzle_id = puzzles.id AND games.outcome = '破解成功'))`);
  return db;
 }
 export function seedIfEmpty(db: DatabaseSync, seedPuzzles: SeedPuzzle[]): void {

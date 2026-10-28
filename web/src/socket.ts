@@ -1,16 +1,29 @@
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
-import type { Ack, ClientToServer, JoinRoomRequest, ServerToClient, Settings } from '@shared/protocol';
+import type {
+  Ack, ClientToServer, JoinRoomRequest, ServerToClient, Settings,
+  HighlightRequest, RemoveHighlightRequest, StrokeInput, CanvasStroke,
+  AiCanvasGuess, DrawerSecretView, DeviceInfo,
+} from '@shared/protocol';
 import { readPlayerAvatar } from './avatars';
+import { detectClientDevice } from './device';
+import { normalizeText } from './game';
 import { withLoading } from './loading';
 import { getSnapshot, notify, updateState } from './store';
 
 export type JoinIdentity = JoinRoomRequest;
-export const socket: Socket<ServerToClient, ClientToServer> = io({ autoConnect: false, reconnection: true, reconnectionDelay: 800, reconnectionDelayMax: 5000, randomizationFactor: 0.3 });
+export const socket: Socket<ServerToClient, ClientToServer> = io({
+  autoConnect: false,
+  reconnection: true,
+  reconnectionDelay: 600,
+  reconnectionDelayMax: 4000,
+  randomizationFactor: 0.25,
+});
 let identity: JoinIdentity | null = null;
 let joinVersion = 0;
 let joinTimer: ReturnType<typeof setTimeout> | null = null;
 const clearJoinTimer = () => { if (joinTimer) clearTimeout(joinTimer); joinTimer = null; };
+const inflightSubmits = new Map<string, Promise<{ id: string }>>();
 
 function rejoin(): void {
   if (!identity) return;
@@ -40,39 +53,92 @@ socket.on('room:kicked', () => { identity = null; ++joinVersion; updateState({ r
 
 export function joinRoom(next: JoinIdentity): void {
   const avatar = next.avatar ?? readPlayerAvatar();
+  const device = next.device ?? detectClientDevice();
   if (identity?.code === next.code && identity.playerKey === next.playerKey && identity.avatar === avatar && getSnapshot().joined) return;
   if (identity && identity.code !== next.code && socket.connected) socket.emit('room:leave');
-  identity = { ...next, avatar };
+  identity = { ...next, avatar, ...(device ? { device } : {}) };
   clearJoinTimer();
   ++joinVersion;
   updateState({ room: null, joined: false, status: 'connecting', joinError: null });
   if (socket.connected) rejoin(); else socket.connect();
 }
 
+export function updateDeviceModality(device: DeviceInfo): void {
+  if (!identity || !socket.connected) return;
+  if (identity.device?.kind === device.kind && identity.device?.label === device.label) return;
+  identity = { ...identity, device };
+  socket.emit('room:join', identity, result => {
+    if (result.ok) updateState({ room: result.value });
+  });
+}
+
 export function leaveRoom(): void {
   clearJoinTimer();
   identity = null;
   ++joinVersion;
+  inflightSubmits.clear();
   if (socket.connected) socket.emit('room:leave');
   socket.disconnect();
   updateState({ room: null, joined: false, status: 'offline', joinError: null });
 }
 
-function request<T>(send: (ack: (result: Ack<T>) => void) => void): Promise<T> {
+function request<T>(send: (ack: (result: Ack<T>) => void) => void, onTimeoutFallback?: () => T | undefined): Promise<T> {
   if (!socket.connected || !getSnapshot().joined) return Promise.reject(new Error('连接尚未恢复，请稍后再试'));
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error('请求超时，请等待房间状态更新后重试')), 20000);
+    const timer = window.setTimeout(() => {
+      const recovered = onTimeoutFallback?.();
+      if (recovered !== undefined) {
+        resolve(recovered);
+        return;
+      }
+      reject(new Error('请求超时，请等待房间状态更新后重试'));
+    }, 20000);
     send(result => { window.clearTimeout(timer); if (result.ok) resolve(result.value); else reject(new Error(result.msg)); });
   });
+}
+
+function submitDedup(kind: 'q:ask' | 'guess:submit', text: string): Promise<{ id: string }> {
+  const norm = normalizeText(text);
+  const key = `${kind}:${norm}`;
+  const existing = inflightSubmits.get(key);
+  if (existing) return existing;
+  const task = request<{ id: string }>(
+    ack => socket.emit(kind, { text }, ack),
+    () => {
+      const room = getSnapshot().room;
+      const selfKey = identity?.playerKey;
+      if (!room || !selfKey) return undefined;
+      if (kind === 'q:ask') {
+        const matched = [...room.log].reverse().find(item => item.playerKey === selfKey && normalizeText(item.text) === norm);
+        return matched ? { id: matched.id } : undefined;
+      }
+      const matched = [...room.guesses].reverse().find(item => item.playerKey === selfKey && normalizeText(item.text) === norm);
+      return matched ? { id: matched.id } : undefined;
+    },
+  ).finally(() => {
+    inflightSubmits.delete(key);
+  });
+  inflightSubmits.set(key, task);
+  return task;
 }
 
 export const actions = {
   settings: (partial: Partial<Settings>) => request<undefined>(ack => socket.emit('room:settings', partial, ack)),
   kick: (playerKey: string) => request<undefined>(ack => socket.emit('room:kick', { playerKey }, ack)),
   start: (puzzleId?: string) => withLoading('正在准备题目…', () => request<undefined>(ack => socket.emit('game:start', puzzleId ? { puzzleId } : {}, ack))),
-  ask: (text: string) => request<{ id: string }>(ack => socket.emit('q:ask', { text }, ack)),
-  guess: (text: string) => request<{ id: string }>(ack => socket.emit('guess:submit', { text }, ack)),
+  ask: (text: string) => submitDedup('q:ask', text),
+  guess: (text: string) => submitDedup('guess:submit', text),
   hint: () => request<undefined>(ack => socket.emit('hint:show', ack)),
+  highlight: (range: HighlightRequest) => request<undefined>(ack => socket.emit('surface:highlight', range, ack)),
+  removeHighlight: (highlight: RemoveHighlightRequest) => request<undefined>(ack => socket.emit('surface:unhighlight', highlight, ack)),
+  stroke: (input: StrokeInput) => request<CanvasStroke>(ack => socket.emit('canvas:stroke', input, ack)),
+  undoStroke: (round?: number) => request<undefined>(ack => socket.emit('canvas:undo', round ? { round } : {}, ack)),
+  clearCanvas: (round?: number) => request<undefined>(ack => socket.emit('canvas:clear', round ? { round } : {}, ack)),
+  nextFrame: (round?: number) => request<undefined>(ack => socket.emit('canvas:next-frame', round ? { round } : {}, ack)),
+  aiGuess: (snapshotDataUrl?: string) => request<AiCanvasGuess>(ack => socket.emit('canvas:ai-guess', snapshotDataUrl ? { snapshotDataUrl } : {}, ack)),
+  drawerWord: () => request<DrawerSecretView>(ack => socket.emit('drawer:word', ack)),
+  bluff: (text: string) => request<undefined>(ack => socket.emit('party:bluff', { text }, ack)),
+  vote: (targetId: string) => request<undefined>(ack => socket.emit('party:vote', { targetId }, ack)),
   reveal: () => request<undefined>(ack => socket.emit('game:reveal', ack)),
   rate: (score: 1 | 0 | -1, funny: boolean) => request<undefined>(ack => socket.emit('rate', { score, funny }, ack)),
 };
