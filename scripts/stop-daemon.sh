@@ -11,7 +11,7 @@ fi
 
 PID="$(cat "$PID_FILE" 2>/dev/null || true)"
 if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
-    echo "正在停止 turtle-soup 服务 (PID: $PID)..."
+    echo "正在停止 draw-and-guess 服务 (PID: $PID)..."
     kill "$PID" 2>/dev/null || true
     for i in {1..10}; do
         if ! kill -0 "$PID" 2>/dev/null; then
@@ -20,11 +20,11 @@ if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
         sleep 0.5
     done
     if kill -0 "$PID" 2>/dev/null; then
-        echo "强制停止 turtle-soup 服务 (PID: $PID)..."
+        echo "强制停止 draw-and-guess 服务 (PID: $PID)..."
         kill -9 "$PID" 2>/dev/null || true
     fi
     rm -f "$PID_FILE"
-    echo "turtle-soup 已停止。"
+    echo "draw-and-guess 已停止。"
 else
     echo "进程已不存在，清除过期 PID 文件。"
     rm -f "$PID_FILE"
