@@ -15,6 +15,7 @@ const success:Ack={ok:true,value:undefined};
 const roundSchema=z.object({round:z.number().int().positive()}).strict();
 const textSchema=roundSchema.extend({text:z.string().trim().min(1).max(400)}).strict();
 const strokeSchema=roundSchema.extend({
+ id:z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).optional(),
  tool:z.enum(['pen','eraser','fill','line','rect','circle']),
  color:z.string().regex(/^#[0-9a-fA-F]{3,8}$/),
  size:z.number().min(LIMITS.brushSizeMin).max(LIMITS.brushSizeMax),
@@ -25,7 +26,7 @@ export function attachSockets(io:Server<ClientToServer,ServerToClient>,deps:AppD
  const {rooms,repo,judge}=deps;
  const scores=new ScoreRepo(deps.db);
  const limiter=new RateLimiter();
- const strokeLimiter=new RateLimiter({minIntervalMs:0,maxPerMinute:600});
+ const strokeLimiter=new RateLimiter({minIntervalMs:0,maxPerMinute:3600});
  const queues=new Map<string,Promise<void>>();
  // Private retry keys never enter room snapshots, public logs, or score storage.
  const pending=new Map<string,{norm:string;id:string;gameId:string}>();

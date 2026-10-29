@@ -1,15 +1,17 @@
-/* Core drawing room: layout only; CandyUI owns control and panel appearances. */
+/* Core drawing room: 3-column full-height aligned layout; CandyUI owns control and panel appearances. */
 .pictionary-room {
   display: grid;
-  grid-template-columns: 210px minmax(0, 820px) minmax(256px, 290px);
+  grid-template-columns: 216px minmax(0, 1fr) 292px;
   justify-content: center;
-  align-items: start;
-  gap: 12px;
+  align-items: stretch;
+  gap: 14px;
   width: 100%;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  padding: 6px 12px 12px;
+  max-width: 1560px;
+  height: calc(100dvh - 134px);
+  min-height: 580px;
+  max-height: 860px;
+  margin: 0 auto;
+  padding: 4px 12px 10px;
   box-sizing: border-box;
 }
 .pictionary-room .pictionary-sidebar,
@@ -22,6 +24,11 @@
   min-width: 0;
   min-height: 0;
 }
+.pictionary-room .pictionary-sidebar,
+.pictionary-room .pictionary-board,
+.pictionary-room .pictionary-canvas-stage {
+  height: 100%;
+}
 .pictionary-room .pictionary-meta,
 .pictionary-room .pictionary-canvas-heading,
 .pictionary-room .pictionary-tool-group {
@@ -31,76 +38,79 @@
   gap: 8px;
 }
 .pictionary-room .pictionary-canvas-heading {
-  min-height: 36px;
+  flex-shrink: 0;
+  min-height: 40px;
   justify-content: space-between;
   font-size: 14px;
   padding: 6px 14px;
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.94);
   color: #173d5d;
   box-shadow: 0 4px 12px rgba(9, 44, 96, 0.12);
 }
 .pictionary-room .pictionary-guess-result { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.pictionary-room .pictionary-players { min-height: 0; max-height: calc(100dvh - 300px); overflow-y: auto; overflow-wrap: anywhere; }
+.pictionary-room .pictionary-players {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pictionary-room .pictionary-players > .candy-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
 .pictionary-room .pictionary-canvas-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 8 / 5;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 18px;
   overflow: hidden;
-  background: #fff;
+  background: #ffffff;
   box-shadow: 0 10px 28px rgba(7, 36, 84, 0.18);
-  border: 2px solid rgba(255, 255, 255, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.9);
 }
 .pictionary-room .pictionary-canvas {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
   max-height: none;
-  aspect-ratio: 8 / 5;
   touch-action: pan-y;
-  background: #fff;
+  background: #ffffff;
 }
 .pictionary-room .pictionary-canvas-editable { cursor: crosshair; touch-action: none; }
 
-/* macOS Dock style floating toolbar at bottom of canvas */
-.pictionary-room .pictionary-dock-wrapper {
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  transform: translateX(-50%);
-  max-width: calc(100% - 12px);
-  z-index: 10;
-  transition: opacity 200ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.pictionary-room .pictionary-dock-wrapper.pictionary-dock-drawing {
-  opacity: 0.22;
-  pointer-events: none;
-  transform: translateX(-50%) translateY(8px) scale(0.96);
-}
+/* Full-width Dock toolbar below the canvas, aligned with left & right columns */
 .pictionary-room .pictionary-dock {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(245, 250, 255, 0.88);
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: rgba(245, 250, 255, 0.94);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
-  border: 1.5px solid rgba(0, 104, 240, 0.22);
-  box-shadow: 0 10px 26px rgba(11, 45, 102, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), padding 220ms ease, box-shadow 220ms ease;
-}
-.pictionary-room .pictionary-dock:hover {
-  padding: 7px 12px;
-  transform: translateY(-2px);
-  box-shadow: 0 14px 32px rgba(11, 45, 102, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 22px rgba(11, 45, 102, 0.16);
+  box-sizing: border-box;
 }
 .pictionary-room .pictionary-dock-group,
 .pictionary-room .pictionary-dock-swatches {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 .pictionary-room .pictionary-dock-group .candy-btn {
   padding-inline: 8px !important;
@@ -108,7 +118,7 @@
 }
 .pictionary-room .pictionary-dock-divider {
   width: 1px;
-  height: 20px;
+  height: 22px;
   background: rgba(23, 61, 93, 0.16);
   flex-shrink: 0;
 }
@@ -117,40 +127,41 @@
   transform-origin: center bottom;
 }
 .pictionary-room .pictionary-dock-item:hover:not(:disabled) {
-  transform: translateY(-4px) scale(1.15) !important;
+  transform: translateY(-4px) scale(1.12) !important;
   z-index: 2;
 }
 .pictionary-room .pictionary-color-swatch {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  min-height: 18px !important;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
   padding: 0 !important;
   border-radius: 999px !important;
-  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  border: 2px solid rgba(255, 255, 255, 0.85) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 .pictionary-room .pictionary-color-swatch.is-selected {
-  transform: translateY(-3px) scale(1.22) !important;
-  box-shadow: 0 0 0 2px #0068f0, 0 4px 8px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-3px) scale(1.2) !important;
+  box-shadow: 0 0 0 2.5px #0068f0, 0 4px 8px rgba(0, 0, 0, 0.25) !important;
 }
 .pictionary-room .pictionary-dock-size {
   display: flex;
   align-items: center;
-  gap: 5px;
-  width: 92px;
+  gap: 6px;
+  width: 108px;
   flex-shrink: 0;
 }
 .pictionary-room .pictionary-dock-size > span {
   font-size: 11px;
   font-weight: 800;
   color: #173d5d;
-  min-width: 24px;
+  min-width: 26px;
   text-align: right;
+  flex-shrink: 0;
 }
 .pictionary-room .pictionary-dock-size > :last-child {
   flex: 1;
-  min-width: 44px;
+  min-width: 50px;
 }
 
 .pictionary-room .pictionary-chat {
@@ -158,25 +169,27 @@
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-  height: min(640px, calc(100dvh - 148px));
-  max-height: calc(100dvh - 148px);
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
 }
 .pictionary-room .pictionary-chat > h2 { margin: 0; font-size: 16px; flex-shrink: 0; }
 .pictionary-room .pictionary-chat-log { flex: 1; min-height: 120px; overflow-y: auto; overflow-wrap: anywhere; }
 .pictionary-room .pictionary-guess-text { margin: 2px 0 0; font-size: 13px; overflow-wrap: anywhere; }
 .pictionary-room .pictionary-composer { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .pictionary-room .pictionary-compose-status { margin: 0; font-size: 12px; color: var(--text-muted); }
-.pictionary-room .pictionary-reveal { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.pictionary-room .pictionary-reveal { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .pictionary-room .pictionary-reveal p { margin: 4px 0 0; }
 
 @media (max-width: 1180px) {
-  .pictionary-room { grid-template-columns: minmax(0, 1fr); }
-  .pictionary-room .pictionary-board { order: 1; }
+  .pictionary-room { grid-template-columns: minmax(0, 1fr); height: auto; max-height: none; }
+  .pictionary-room .pictionary-board { order: 1; height: auto; }
+  .pictionary-room .pictionary-canvas-frame { aspect-ratio: 8 / 5; flex: none; }
   .pictionary-room .pictionary-chat { order: 2; height: auto; max-height: none; }
   .pictionary-room .pictionary-chat-log { max-height: 220px; }
-  .pictionary-room .pictionary-sidebar { order: 3; }
+  .pictionary-room .pictionary-sidebar { order: 3; height: auto; }
   .pictionary-room .pictionary-players { max-height: 220px; }
-  .pictionary-room .pictionary-dock { flex-wrap: wrap; border-radius: 20px; justify-content: center; }
+  .pictionary-room .pictionary-dock { flex-wrap: wrap; justify-content: center; }
 }
 @media (max-width: 650px) {
   .pictionary-room { padding: 8px; gap: 10px; }

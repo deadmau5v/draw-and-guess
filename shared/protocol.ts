@@ -198,6 +198,7 @@ export interface CanvasStroke {
   sabotage?: boolean;     // 是否为内鬼破坏笔触（揭晓前对普通玩家隐藏标记）
 }
 export interface StrokeInput {
+  id?: string;
   round?: number;
   tool: DrawTool;
   color: string;

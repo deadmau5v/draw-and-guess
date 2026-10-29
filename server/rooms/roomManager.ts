@@ -180,15 +180,27 @@ export class RoomManager {
   for(const pt of input.points) {
    if(typeof pt?.x!=='number'||typeof pt?.y!=='number'||!Number.isFinite(pt.x)||!Number.isFinite(pt.y)||pt.x<0||pt.x>1000||pt.y<0||pt.y>1000) return fail('INVALID','坐标超出画布范围');
   }
+  const normalizedPoints=input.points.map(pt=>({x:Math.round(pt.x*10)/10,y:Math.round(pt.y*10)/10,...(typeof pt.p==='number'&&Number.isFinite(pt.p)?{p:Math.max(0,Math.min(1,Math.round(pt.p*100)/100))}:{})}));
+  if(typeof input.id==='string'&&input.id.trim()) {
+   const existing=r.strokes.find(s=>s.id===input.id&&s.playerKey===key);
+   if(existing) {
+    existing.tool=input.tool;
+    existing.color=input.color;
+    existing.size=Math.round(input.size);
+    existing.points=normalizedPoints;
+    existing.at=this.now();
+    return ok(structuredClone(existing));
+   }
+  }
   if(r.strokes.length>=LIMITS.strokesMax) r.strokes.shift();
   const isSabotage=!!input.sabotage&&r.saboteurKey===key;
   if(isSabotage&&input.quadrant!==undefined) r.sabotagedQuadrant=input.quadrant;
   const stroke:CanvasStroke={
-   id:`s-${++this.sequence}`,
+   id:typeof input.id==='string'&&input.id.trim()?input.id.trim():`s-${++this.sequence}`,
    tool:input.tool,
    color:input.color,
    size:Math.round(input.size),
-   points:input.points.map(pt=>({x:Math.round(pt.x*10)/10,y:Math.round(pt.y*10)/10,...(typeof pt.p==='number'&&Number.isFinite(pt.p)?{p:Math.max(0,Math.min(1,Math.round(pt.p*100)/100))}:{})})),
+   points:normalizedPoints,
    playerKey:key,
    playerName:p.name,
    at:this.now(),
