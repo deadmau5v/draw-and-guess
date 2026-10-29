@@ -305,11 +305,7 @@
     white-space: nowrap !important;
   }
   .pictionary-room .pictionary-dock-group:first-child .candy-btn-icon {
-    margin-right: 1px !important;
-  }
-  .pictionary-room .pictionary-dock-group:first-child .candy-btn-icon svg {
-    width: 11px !important;
-    height: 11px !important;
+    display: none !important;
   }
   .pictionary-room .pictionary-dock-group:last-child {
     grid-column: 2 / 3;
