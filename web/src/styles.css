@@ -347,19 +347,20 @@ h1, h2, h3, h4 { margin-top: 0; }
   .home-guide-layout { grid-template-columns: 80px minmax(0, 1fr); gap: 10px; }
 }
 @media (max-width: 800px) {
-  .waiting-main { padding: 52px 16px 16px; }
-  .waiting-board { grid-template-columns: minmax(0, 1fr); gap: 60px; }
-  .waiting-player-list { max-height: 240px; }
-  main { padding: 16px; }
-  .game-top-header { padding: 12px; }
-  .game-board-card, .room-grid { grid-template-columns: minmax(0, 1fr); }
+  .waiting-main { padding: 12px 12px 16px; }
+  .waiting-board { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .waiting-player-list { max-height: 200px; }
+  main { padding: 10px; }
+  .game-top-header { padding: 6px 12px; }
+  .game-board-card, .room-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .game-form-row { grid-template-columns: 104px minmax(0, 1fr); gap: 8px; }
-  .game-header-inner { display: flex; flex-direction: column; gap: 12px; }
-  .header-center-logo { order: -1; }
+  .game-header-inner { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+  .header-center-logo { order: -1; flex-shrink: 0; }
+  .header-banner-img { width: 118px; height: 42px; }
   .header-right-group { display: none; }
-  .header-nav-group { justify-content: center; }
+  .header-nav-group { justify-content: flex-end; gap: 4px; flex-wrap: nowrap; }
   .home-main { max-width: 600px; margin-top: 0; }
-  .home-main .board-col-right { margin-top: 56px; }
+  .home-main .board-col-right { margin-top: 8px; }
   .home-guide-layout { grid-template-columns: 90px minmax(0, 1fr); }
 }
 @media (max-width: 480px) {

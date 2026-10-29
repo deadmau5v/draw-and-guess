@@ -26,15 +26,16 @@ export function Home({ name, onName, onCreate, onJoin, onLibrary = () => { locat
     onJoin(clean);
   };
   return <PageContainer className="home-main">
-    <CandyPanel theme="frosted" className="game-board-card" style={{ padding: 28 }}>
+    <CandyPanel theme="frosted" className="game-board-card" style={{ padding: 24 }}>
       <section className="board-col-left">
-        <CandyRibbon color="blue" className="home-ribbon">快速开始</CandyRibbon>
-        <div className="mascot-avatar-wrap">
-          <img src={cdnUrl('/assets/turtle-think.png')} alt="你画我猜小画家" style={{ width: 126, height: 126, objectFit: 'contain' }} />
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 24 }}>你画我猜</h1>
-          <p className="home-welcome" style={{ margin: 0 }}>创建房间，邀请好友一起画画猜词。</p>
+        <div className="home-hero-header">
+          <div className="mascot-avatar-wrap">
+            <img src={cdnUrl('/assets/turtle-think.png')} alt="你画我猜小画家" className="home-mascot-img" />
+          </div>
+          <div className="home-hero-copy">
+            <h1>你画我猜</h1>
+            <p className="home-welcome">创建房间，邀请好友一起画画猜词。</p>
+          </div>
         </div>
         <div className="game-form-group">
           <CandyInput id="nickname" label="你的昵称" value={name} maxLength={16} placeholder="输入昵称"
@@ -46,8 +47,7 @@ export function Home({ name, onName, onCreate, onJoin, onLibrary = () => { locat
         </div>
       </section>
       <section className="board-col-right">
-        <CandyRibbon color="blue" className="home-ribbon">派对入口</CandyRibbon>
-        <div className="feature-grid-2x2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+        <div className="feature-grid-2x2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
           <CandyButton variant="green" shape="rounded" appearance="soft" className="home-entry" fullWidth aria-label="词库" onClick={onLibrary}>
             <span className="home-entry-content">
               <span className="home-entry-art"><img src={cdnUrl('/assets/home/puzzle-library.png')} alt="" className="home-entry-image" /><CandyGameIcon name="book" size={24} /></span>

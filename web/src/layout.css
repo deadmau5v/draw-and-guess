@@ -38,9 +38,13 @@ body { background: #1685ed; }
   .room-entry-footer { flex-direction: column; align-items: stretch; }
 }
 
-/* Reserve the floating ribbons' upper half inside the route's scroll frame. */
-.home-main > .page-viewport, .waiting-main > .page-viewport { padding-top: 24px; }
+/* Reserve clean top spacing inside the route's scroll frame. */
+.home-main > .page-viewport, .waiting-main > .page-viewport { padding-top: 8px; }
 .home-main .game-board-card { min-height: 540px; }
+.home-hero-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.home-mascot-img { width: 116px; height: 116px; object-fit: contain; }
+.home-hero-copy h1 { margin: 0 0 4px; font-size: 24px; }
+.home-hero-copy p { margin: 0; }
 .home-main .board-col-left, .home-main .board-col-right { min-width: 0; }
 .waiting-main .waiting-board { min-height: 520px; padding: 0 4px 8px; }
 .playing-main > .page-viewport { display: flex; flex-direction: column; padding-top: 4px; overflow-y: auto; }
@@ -140,34 +144,47 @@ body { background: #1685ed; }
   .playing-main > .page-viewport { display: block; }
 }
 @media (max-width: 800px) {
-  .game-top-header { padding: 6px 10px; }
-  .game-header-inner { display: grid; grid-template-columns: minmax(0,1fr); gap: 2px; }
-  .header-center-logo { order: -1; }
-  .header-banner-img { width: 190px; height: 56px; }
-  .header-nav-group { min-width: 0; flex-wrap: nowrap; gap: 4px; justify-content: center; overflow-x: auto; }
-  .header-nav-group > button { flex-shrink: 0; padding-inline: 9px !important; font-size: 13px !important; }
-  .header-nav-group > button svg { width: 18px !important; height: 18px !important; }
+  .game-top-header { padding: 4px 10px; }
+  .game-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .header-center-logo { order: -1; flex-shrink: 0; }
+  .header-banner-img { width: 116px; height: 42px; }
+  .header-nav-group { min-width: 0; flex-wrap: nowrap; gap: 2px; justify-content: flex-end; overflow-x: auto; }
+  .header-nav-group > button { flex-shrink: 0; padding-inline: 7px !important; height: 30px !important; min-height: 30px !important; font-size: 12px !important; }
+  .header-nav-group > button svg { width: 15px !important; height: 15px !important; }
   .header-right-group { display: none; }
   .home-main .game-board-card { min-height: 0; }
-  .home-main .board-col-right { margin-top: 32px; }
+  .home-main .board-col-right { margin-top: 16px; }
 }
 @media (max-width: 650px) {
-  .page-container, .page-container.home-main, .page-container.waiting-main, .page-container.playing-main, .page-container.library-main { padding: 6px 10px 12px; }
-  .home-main > .page-viewport, .waiting-main > .page-viewport { padding-top: 32px; }
-  .home-main .game-board-card { padding: 16px !important; }
-  .home-main .mascot-avatar-wrap > div { width: 96px !important; height: 96px !important; }
-  .home-main .board-col-left { gap: 10px; }
+  .page-container, .page-container.home-main, .page-container.waiting-main, .page-container.playing-main, .page-container.library-main { padding: 2px 6px 6px; }
+  .home-main > .page-viewport, .waiting-main > .page-viewport { padding-top: 6px; }
+  .home-main .game-board-card { padding: 14px !important; gap: 14px; }
+  .home-hero-header { flex-direction: row; text-align: left; justify-content: flex-start; gap: 12px; }
+  .home-mascot-img { width: 64px !important; height: 64px !important; }
+  .home-hero-copy h1 { font-size: 20px; margin: 0 0 2px; }
+  .home-hero-copy p { font-size: 12px; text-align: left; }
+  .home-main .board-col-left { gap: 8px; }
+  .home-main .board-col-right { margin-top: 4px; gap: 10px; }
   .home-main .game-form-group { gap: 8px; }
-  .library-shell { padding: 12px; }
-  .library-topline { flex: 0 0 36px; margin-top: 6px !important; margin-bottom: 6px !important; justify-content: flex-end; }
-  .library-layout { display: flex; flex-direction: column; gap: 16px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-  .library-results { order: 1; min-height: auto; overflow: visible; }
-  .library-results-scroll { flex: 0 0 auto; overflow: visible; padding-right: 0; }
-  .library-filters { order: 2; margin-top: 8px; padding-bottom: 16px; overflow: visible; display: flex; }
-  .library-recommendation { display: none; }
-  .library-eyebrow { display: none; }
-  .library-main .library-ribbon-slot { width: min(260px,80%); left: 50%; transform: translateX(-50%); }
-  .library-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .home-entry { padding: 10px 12px !important; min-height: 92px !important; }
+  .home-entry-art { height: 42px !important; margin-bottom: 2px !important; }
+  .home-entry-image { width: 42px !important; height: 42px !important; }
+  .home-entry-content strong { font-size: 15px !important; }
+  .home-entry-description { font-size: 11px !important; }
+  .waiting-main .waiting-board { min-height: 0; padding: 14px !important; gap: 16px; }
+  .library-shell { padding: 10px 12px; gap: 6px; }
+  .library-topline { flex: 0 0 auto; margin-top: 0 !important; margin-bottom: 2px !important; justify-content: space-between; }
+  .library-topline h1 { font-size: 18px; }
+  .library-topline p { font-size: 11px; }
+  .library-categories { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 5px !important; margin-top: 2px !important; }
+  .library-categories > button { padding-inline: 4px !important; height: 28px !important; min-height: 28px !important; font-size: 11px !important; }
+  .library-layout { display: flex; flex-direction: column; gap: 10px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .library-results { order: 1; min-height: 0; flex: 1; overflow: hidden; }
+  .library-results-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+  .library-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .library-puzzle-card .candy-card-body { padding: 8px !important; }
+  .library-card-content { gap: 6px !important; }
+  .library-puzzle-card h2 { font-size: 13px !important; line-height: 1.3 !important; margin: 0 !important; }
   .game-loading-indicator { right: 10px; top: 10px; }
 }
 @media (max-width: 370px) {

@@ -183,34 +183,203 @@
 
 @media (max-width: 1180px) {
   .pictionary-room { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; max-height: none; }
-  .pictionary-room .pictionary-board { order: 1; height: auto; gap: 8px; }
-  .pictionary-room .pictionary-canvas-stage { gap: 8px; height: auto; }
+  .pictionary-room .pictionary-board { order: 1; height: auto; gap: 6px; }
+  .pictionary-room .pictionary-canvas-stage { gap: 6px; height: auto; }
   .pictionary-room .pictionary-canvas-frame { aspect-ratio: 8 / 5; flex: none; }
-  .pictionary-room .pictionary-chat { order: 2; height: auto; max-height: none; padding: 10px !important; gap: 6px; }
-  .pictionary-room .pictionary-chat > h2 { font-size: 14px; }
-  .pictionary-room .pictionary-chat-log { min-height: 76px; max-height: 150px; }
-  .pictionary-room .pictionary-chat-log .candy-empty-state { padding: 8px 10px !important; gap: 4px !important; min-height: 0 !important; }
+  .pictionary-room .pictionary-chat { order: 2; height: auto; max-height: none; padding: 8px 10px !important; gap: 6px; }
+  .pictionary-room .pictionary-chat > h2 { font-size: 13px; }
+  .pictionary-room .pictionary-chat-log { min-height: 44px; max-height: 110px; }
+  .pictionary-room .pictionary-chat-log .candy-empty-state { padding: 4px 8px !important; gap: 2px !important; min-height: 0 !important; }
   .pictionary-room .pictionary-chat-log .candy-empty-state-icon { display: none; }
-  .pictionary-room .pictionary-sidebar { order: 3; height: auto; }
-  .pictionary-room .pictionary-players { max-height: 200px; }
+  .pictionary-room .pictionary-chat-log .candy-empty-state-title { font-size: 12px !important; margin: 0 !important; }
+  .pictionary-room .pictionary-chat-log .candy-empty-state-description { font-size: 11px !important; margin: 0 !important; }
+  .pictionary-room .pictionary-sidebar { order: 3; height: auto; gap: 6px; }
+  .pictionary-room .pictionary-players { max-height: 160px; }
   .pictionary-room .pictionary-dock {
     flex-wrap: wrap;
-    justify-content: center;
-    padding: 8px 10px;
-    gap: 8px 10px;
-    border-radius: 16px;
+    justify-content: space-between;
+    padding: 6px 8px;
+    gap: 6px;
+    border-radius: 12px;
   }
   .pictionary-room .pictionary-dock-divider { display: none; }
-  .pictionary-room .pictionary-dock-group:first-child,
-  .pictionary-room .pictionary-dock-swatches {
-    width: 100%;
-    justify-content: center;
-  }
 }
 @media (max-width: 650px) {
-  .pictionary-room { padding: 4px 6px 12px; gap: 8px; }
-  .pictionary-room .pictionary-canvas-heading { font-size: 12px; min-height: 34px; padding: 4px 10px; }
-  .pictionary-room .pictionary-dock-group .candy-btn { padding-inline: 7px !important; font-size: 11px !important; }
-  .pictionary-room .pictionary-color-swatch { width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 22px !important; }
-  .pictionary-room .pictionary-dock-size { width: 130px; }
+  /* Single-screen compact mobile layout: maximize canvas & fit room + dock + chat cleanly */
+  .pictionary-room {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 54px);
+    min-height: 0;
+    max-height: calc(100dvh - 54px);
+    padding: 2px 4px 6px;
+    gap: 6px;
+    overflow-y: auto;
+  }
+  .pictionary-room .pictionary-sidebar {
+    order: 1;
+    flex-shrink: 0;
+    height: auto;
+  }
+  .pictionary-room .pictionary-room-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding: 6px 10px !important;
+    gap: 6px;
+    border-radius: 12px;
+  }
+  .pictionary-room .pictionary-room-info strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .pictionary-room .pictionary-meta {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .pictionary-room .pictionary-meta .candy-badge {
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+  }
+  .pictionary-room .pictionary-room-info > .candy-btn {
+    width: auto !important;
+    padding-inline: 8px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    font-size: 11px !important;
+    flex-shrink: 0;
+  }
+  .pictionary-room .pictionary-players { display: none; }
+  .pictionary-room .pictionary-board {
+    order: 2;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    gap: 6px;
+  }
+  .pictionary-room .pictionary-canvas-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    gap: 6px;
+  }
+  .pictionary-room .pictionary-canvas-heading {
+    font-size: 12px;
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 10px;
+  }
+  .pictionary-room .pictionary-canvas-frame {
+    flex: 1 1 auto;
+    min-height: 215px;
+    aspect-ratio: 8 / 5;
+    border-radius: 14px;
+  }
+  .pictionary-room .pictionary-dock {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 6px 8px;
+    gap: 5px 6px;
+    border-radius: 12px;
+  }
+  .pictionary-room .pictionary-dock-group:first-child {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 3px;
+    min-width: 0;
+  }
+  .pictionary-room .pictionary-dock-group:last-child {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    justify-content: flex-end;
+    gap: 3px;
+  }
+  .pictionary-room .pictionary-dock-group:last-child .candy-btn {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    min-height: 26px !important;
+    padding: 0 !important;
+  }
+  .pictionary-room .pictionary-dock-swatches {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    justify-content: space-between;
+    gap: 2px;
+    min-width: 0;
+  }
+  .pictionary-room .pictionary-dock-size {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    width: 96px;
+    gap: 4px;
+  }
+  .pictionary-room .pictionary-dock-group .candy-btn {
+    padding-inline: 5px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    font-size: 11px !important;
+  }
+  .pictionary-room .pictionary-dock-group .candy-btn-icon {
+    margin-right: 2px !important;
+  }
+  .pictionary-room .pictionary-color-swatch {
+    width: 17px !important;
+    height: 17px !important;
+    min-width: 17px !important;
+    min-height: 17px !important;
+  }
+  .pictionary-room .pictionary-dock-size > span {
+    font-size: 10px;
+    min-width: 22px;
+  }
+  .pictionary-room .pictionary-dock-size > :last-child {
+    min-width: 44px;
+  }
+  .pictionary-room .pictionary-chat {
+    order: 3;
+    flex: 0 0 auto;
+    height: auto;
+    padding: 6px 10px !important;
+    gap: 4px;
+    border-radius: 14px;
+  }
+  .pictionary-room .pictionary-chat > h2 {
+    font-size: 12px;
+  }
+  .pictionary-room .pictionary-chat-log {
+    min-height: 22px;
+    max-height: 46px;
+  }
+  .pictionary-room .pictionary-composer {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .pictionary-room .pictionary-compose-status {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .pictionary-room .pictionary-composer .candy-textarea-wrapper,
+  .pictionary-room .pictionary-composer .candy-textarea-wrapper textarea {
+    min-height: 36px !important;
+    height: 36px !important;
+    max-height: 36px !important;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    line-height: 22px !important;
+    resize: none !important;
+  }
+  .pictionary-room .pictionary-composer > .candy-btn {
+    width: 100% !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 13px !important;
+  }
 }
