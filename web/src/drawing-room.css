@@ -289,18 +289,20 @@
   .pictionary-room .pictionary-dock-group:first-child {
     grid-column: 1 / 2;
     grid-row: 1 / 2;
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 3px;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 4px;
     min-width: 0;
   }
   .pictionary-room .pictionary-dock-group:first-child .candy-btn {
-    padding-inline: 3px !important;
+    padding-inline: 7px !important;
     height: 26px !important;
     min-height: 26px !important;
     font-size: 11px !important;
-    width: 100% !important;
-    min-width: 0 !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
   }
   .pictionary-room .pictionary-dock-group:first-child .candy-btn-icon {
     margin-right: 1px !important;
