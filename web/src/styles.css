@@ -486,6 +486,7 @@ body:has(.game-loading-overlay) { overflow: hidden; }
   .library-results { grid-row: 1; }
   .library-categories { grid-template-columns: repeat(3,minmax(0,1fr)); }
   .library-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .library-puzzle-card h2 { font-size: 14px; line-height: 1.35; margin: 2px 0; }
   .library-card-heading h3 { font-size: 15px; }
   .library-card-actions { grid-template-columns: minmax(0,1fr); }
   .library-card-stats { font-size: 10px; }

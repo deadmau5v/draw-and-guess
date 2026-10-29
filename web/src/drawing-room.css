@@ -182,16 +182,35 @@
 .pictionary-room .pictionary-reveal p { margin: 4px 0 0; }
 
 @media (max-width: 1180px) {
-  .pictionary-room { grid-template-columns: minmax(0, 1fr); height: auto; max-height: none; }
-  .pictionary-room .pictionary-board { order: 1; height: auto; }
+  .pictionary-room { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; max-height: none; }
+  .pictionary-room .pictionary-board { order: 1; height: auto; gap: 8px; }
+  .pictionary-room .pictionary-canvas-stage { gap: 8px; height: auto; }
   .pictionary-room .pictionary-canvas-frame { aspect-ratio: 8 / 5; flex: none; }
-  .pictionary-room .pictionary-chat { order: 2; height: auto; max-height: none; }
-  .pictionary-room .pictionary-chat-log { max-height: 220px; }
+  .pictionary-room .pictionary-chat { order: 2; height: auto; max-height: none; padding: 10px !important; gap: 6px; }
+  .pictionary-room .pictionary-chat > h2 { font-size: 14px; }
+  .pictionary-room .pictionary-chat-log { min-height: 76px; max-height: 150px; }
+  .pictionary-room .pictionary-chat-log .candy-empty-state { padding: 8px 10px !important; gap: 4px !important; min-height: 0 !important; }
+  .pictionary-room .pictionary-chat-log .candy-empty-state-icon { display: none; }
   .pictionary-room .pictionary-sidebar { order: 3; height: auto; }
-  .pictionary-room .pictionary-players { max-height: 220px; }
-  .pictionary-room .pictionary-dock { flex-wrap: wrap; justify-content: center; }
+  .pictionary-room .pictionary-players { max-height: 200px; }
+  .pictionary-room .pictionary-dock {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 8px 10px;
+    gap: 8px 10px;
+    border-radius: 16px;
+  }
+  .pictionary-room .pictionary-dock-divider { display: none; }
+  .pictionary-room .pictionary-dock-group:first-child,
+  .pictionary-room .pictionary-dock-swatches {
+    width: 100%;
+    justify-content: center;
+  }
 }
 @media (max-width: 650px) {
-  .pictionary-room { padding: 8px; gap: 10px; }
-  .pictionary-room .pictionary-canvas-heading { font-size: 12px; }
+  .pictionary-room { padding: 4px 6px 12px; gap: 8px; }
+  .pictionary-room .pictionary-canvas-heading { font-size: 12px; min-height: 34px; padding: 4px 10px; }
+  .pictionary-room .pictionary-dock-group .candy-btn { padding-inline: 7px !important; font-size: 11px !important; }
+  .pictionary-room .pictionary-color-swatch { width: 22px !important; height: 22px !important; min-width: 22px !important; min-height: 22px !important; }
+  .pictionary-room .pictionary-dock-size { width: 130px; }
 }
