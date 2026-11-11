@@ -29,6 +29,11 @@ jobs:
       - name: Deploy tested application to Deno
         env:
           DENO_DEPLOY_TOKEN: ${{ secrets.DRAW_DENO_DEPLOY_TOKEN }}
-        run: deno deploy . --org deadmau5v --app draw-d5v --prod --json --non-interactive
+        run: |
+          mkdir -p "$RUNNER_TEMP/draw-upload"
+          cp server.ts kv-game.ts words.cjs "$RUNNER_TEMP/draw-upload/"
+          cp deno-runtime.json "$RUNNER_TEMP/draw-upload/deno.json"
+          cp -R dist "$RUNNER_TEMP/draw-upload/web-assets"
+          deno deploy "$RUNNER_TEMP/draw-upload" --org deadmau5v --app draw-d5v --prod --json --non-interactive
       - name: Verify served health
         run: curl --fail --retry 3 https://draw-d5v.deadmau5v.deno.net/api/game/health
