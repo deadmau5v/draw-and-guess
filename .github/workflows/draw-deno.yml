@@ -1,0 +1,34 @@
+name: Draw Deno deployment
+on:
+  push:
+    branches: [deploy/deno]
+    paths: ['deploy/draw/**', '.github/workflows/draw-deno.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: draw-deno-production
+  cancel-in-progress: false
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/draw
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.8
+      - run: npm ci
+      - run: npm run typecheck && npm run build
+      - run: deno test -A --unstable-kv tests/
+      - name: Deploy tested application to Deno
+        env:
+          DENO_DEPLOY_TOKEN: ${{ secrets.DRAW_DENO_DEPLOY_TOKEN }}
+        run: deno deploy . --org deadmau5v --app draw-d5v --prod --json --non-interactive
+      - name: Verify served health
+        run: curl --fail --retry 3 https://draw-d5v.deadmau5v.deno.net/api/game/health

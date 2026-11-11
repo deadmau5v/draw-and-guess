@@ -1,0 +1,11 @@
+{
+ "unstable":["kv"],
+ "nodeModulesDir":"auto",
+ "deploy":{
+   "org":"deadmau5v","app":"draw-d5v",
+   "install":"npm ci",
+   "build":"npm run build",
+   "runtime":{"type":"dynamic","entrypoint":"server.ts"}
+ },
+ "tasks":{"test":"deno test -A --unstable-kv tests/"}
+}
