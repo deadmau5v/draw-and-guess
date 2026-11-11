@@ -33,6 +33,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/draw-upload"
           cp server.ts kv-game.ts words.cjs "$RUNNER_TEMP/draw-upload/"
           cp deno-runtime.json "$RUNNER_TEMP/draw-upload/deno.json"
+          node -e 'require("fs").writeFileSync(process.env.RUNNER_TEMP+"/draw-upload/build-info.json",JSON.stringify({commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID}))'
           cp -R dist "$RUNNER_TEMP/draw-upload/web-assets"
           deno deploy "$RUNNER_TEMP/draw-upload" --org deadmau5v --app draw-d5v --prod --json --non-interactive
       - name: Verify served health

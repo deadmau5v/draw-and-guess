@@ -348,6 +348,14 @@ export function createDrawServer(kv: Deno.Kv) {
       const { totalRooms } = await engine.countAndListPublicRooms();
       return jsonResp(200, { status: "ok", rooms: totalRooms }, origin);
     }
+    if (m === "GET" && path === "/version") {
+      try {
+        const data = JSON.parse(await Deno.readTextFile(new URL("./build-info.json", import.meta.url)));
+        return jsonResp(200, { commit: data.commit, run: data.run }, origin);
+      } catch {
+        return jsonResp(200, { commit: null, run: null }, origin);
+      }
+    }
     if (m === "GET" && path === "/categories") {
       return jsonResp(200, { categories: categories() }, origin);
     }

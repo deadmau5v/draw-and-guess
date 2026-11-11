@@ -2,7 +2,7 @@
  "unstable":["kv"],
  "deploy":{
   "org":"deadmau5v","app":"draw-d5v",
-  "include":["server.ts","kv-game.ts","words.cjs","deno.json","web-assets/**"],
+  "include":["server.ts","kv-game.ts","words.cjs","deno.json","build-info.json","web-assets/**"],
   "build":"cp -R web-assets dist",
   "runtime":{"type":"dynamic","entrypoint":"server.ts"}
  }
